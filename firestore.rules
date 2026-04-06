@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required) - The unique ID of the user.
+    //   - email: string (required, email format) - The user's email address.
+    //   - isVip: boolean (required) - Whether the user has an active VIP subscription.
+    //   - role: string (required, enum: ['admin', 'user']) - The user's role.
+    //
+    // Collection: bets
+    // Document ID: {betId}
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, size < 100)
+    //   - type: string (required, enum: ['single', 'multi', 'bingo'])
+    //   - odds: number (required, positive)
+    //   - analysis: string (required, size < 5000)
+    //   - isVip: boolean (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: performance
+    // Document ID: {perfId}
+    // Fields:
+    //   - date: string (required, format: YYYY-MM-DD)
+    //   - units: number (required)
+    //   - type: string (required, enum: ['single', 'multi', 'bingo'])
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email.lower() == "minecraftthedark@gmail.com");
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'isVip', 'role']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.isVip is bool &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidBet(data) {
+      return hasOnlyAllowedFields(['id', 'title', 'type', 'odds', 'analysis', 'isVip', 'createdAt']) &&
+             data.id is string &&
+             data.title is string && data.title.size() < 100 &&
+             data.type in ['single', 'multi', 'bingo'] &&
+             data.odds is number && data.odds > 0 &&
+             data.analysis is string && data.analysis.size() < 5000 &&
+             data.isVip is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidPerformance(data) {
+      return hasOnlyAllowedFields(['date', 'units', 'type']) &&
+             data.date is string &&
+             data.units is number &&
+             data.type in ['single', 'multi', 'bingo'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /system/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /bets/{betId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidBet(request.resource.data);
+    }
+
+    match /performance/{perfId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidPerformance(request.resource.data);
+    }
+  }
+}

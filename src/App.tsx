@@ -39,7 +39,8 @@ import {
   orderBy,
   limit,
   Timestamp,
-  addDoc
+  addDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './lib/firebase';
 import { Bet, PerformanceData, UserProfile } from './types';
@@ -48,7 +49,8 @@ import { PerformanceChart } from './components/PerformanceChart';
 import { VipSection } from './components/VipSection';
 import { AuthForm } from './components/AuthForm';
 import { AdminPanel } from './components/AdminPanel';
-import { generateDailyBets } from './services/gemini';
+import { SettingsPanel } from './components/SettingsPanel';
+import { generateDailyBets, checkBetResults } from './services/gemini';
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -57,7 +59,7 @@ export default function App() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin'>('single');
+  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings'>('single');
 
   const [userBets, setUserBets] = useState<string[]>([]);
   const seedingRef = useRef(false);
@@ -69,13 +71,19 @@ export default function App() {
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          const isOwner = firebaseUser.email?.toLowerCase() === 'minecraftthedark@gmail.com';
+          const accessDoc = await getDoc(doc(db, 'system', 'access_control'));
+          const accessData = accessDoc.exists() ? accessDoc.data() : { adminEmails: [], vipEmails: [] };
+          
+          const userEmail = firebaseUser.email?.toLowerCase() || '';
+          const isOwner = userEmail === 'minecraftthedark@gmail.com';
+          const isAdmin = isOwner || accessData.adminEmails.includes(userEmail);
+          const isVip = isAdmin || accessData.vipEmails.includes(userEmail);
           
           if (userDoc.exists()) {
             const userData = userDoc.data() as UserProfile;
-            // Ensure owner always has admin role even if document was created as 'user'
-            if (isOwner && userData.role !== 'admin') {
-              const updatedProfile = { ...userData, role: 'admin' as const, isVip: true };
+            // Update profile if permissions changed
+            if (userData.role !== (isAdmin ? 'admin' : 'user') || userData.isVip !== isVip) {
+              const updatedProfile = { ...userData, role: isAdmin ? 'admin' as const : 'user' as const, isVip };
               await setDoc(doc(db, 'users', firebaseUser.uid), updatedProfile);
               setUser(updatedProfile);
             } else {
@@ -85,9 +93,9 @@ export default function App() {
             // Create initial profile
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              isVip: isOwner, // Owner is VIP by default
-              role: isOwner ? 'admin' : 'user'
+              email: userEmail,
+              isVip,
+              role: isAdmin ? 'admin' : 'user'
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
             setUser(newProfile);
@@ -203,8 +211,8 @@ export default function App() {
     if (!user || user.role !== 'admin') return;
     setIsGenerating(true);
     try {
-      // Clear existing bets first
-      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      // Clear existing NON-MANUAL bets first
+      const betsSnapshot = await getDocs(query(collection(db, 'bets'), where('isManual', '!=', true)));
       const deletePromises = betsSnapshot.docs.map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);
 
@@ -281,6 +289,57 @@ export default function App() {
       </div>
     );
   }
+
+  const handleCheckResults = async () => {
+    if (!user || user.role !== 'admin') return;
+    setIsGenerating(true);
+    try {
+      const pendingBets = bets.filter(b => b.result === 'pending');
+      if (pendingBets.length === 0) {
+        alert("Nenhuma aposta pendente para verificar.");
+        return;
+      }
+
+      const results = await checkBetResults(pendingBets);
+      if (results.length === 0) {
+        alert("O Gemini não encontrou resultados definitivos para os jogos pendentes ainda.");
+        return;
+      }
+
+      for (const res of results) {
+        await handleUpdateBetResult(res.id, res.result);
+      }
+      alert(`${results.length} resultados atualizados com sucesso!`);
+    } catch (error) {
+      console.error("Error checking results:", error);
+      alert("Erro ao verificar resultados.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleUpdateBetResult = async (betId: string, result: 'win' | 'loss' | 'pending') => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      await setDoc(doc(db, 'bets', betId), { result }, { merge: true });
+      
+      // If result is win/loss, we might want to log it to performance as well
+      // This is a simplified version, you can expand it
+      if (result !== 'pending') {
+        const bet = bets.find(b => b.id === betId);
+        if (bet) {
+          const units = result === 'win' ? (bet.odds - 1) : -1;
+          await addDoc(collection(db, 'performance'), {
+            date: new Date().toISOString().split('T')[0],
+            units,
+            type: bet.type
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating bet result:", error);
+    }
+  };
 
   const handleTakeBet = async (betId: string) => {
     if (!user) return;
@@ -377,6 +436,9 @@ export default function App() {
           >
             <Crown className="w-6 h-6" />
           </Button>
+          <Button variant="ghost" size="icon" className={`w-12 h-12 rounded-xl hover:bg-accent ${activeTab === 'settings' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
+            <Settings className="w-6 h-6" />
+          </Button>
           <Button variant="ghost" size="icon" className="w-12 h-12 rounded-xl hover:bg-accent text-muted-foreground" onClick={handleLogout}>
             <LogOut className="w-6 h-6" />
           </Button>
@@ -456,8 +518,15 @@ export default function App() {
                 <AdminPanel 
                   onAddBet={handleAddManualBet} 
                   onForceGenerate={handleForceAIGenerate} 
+                  onCheckResults={handleCheckResults}
                   isGenerating={isGenerating} 
                 />
+              </TabsContent>
+            )}
+
+            {user.role === 'admin' && (
+              <TabsContent value="settings" className="mt-0">
+                <SettingsPanel />
               </TabsContent>
             )}
 
@@ -493,6 +562,7 @@ export default function App() {
                                 isVipUser={user.isVip} 
                                 isTaken={userBets.includes(bet.id)}
                                 onTakeBet={() => handleTakeBet(bet.id)}
+                                onUpdateResult={user.role === 'admin' ? (res) => handleUpdateBetResult(bet.id, res) : undefined}
                               />
                             </motion.div>
                           ))}

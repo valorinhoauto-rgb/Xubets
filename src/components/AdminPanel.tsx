@@ -5,17 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Zap, Save, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Zap, Save, RefreshCw, ShieldCheck, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Bet, Match } from '../types';
 import { motion } from 'framer-motion';
+import { interpretBetScreenshot } from '../services/gemini';
 
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
   onForceGenerate: () => void;
+  onCheckResults: () => void;
   isGenerating: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, isGenerating }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, isGenerating }) => {
+  const [isInterpreting, setIsInterpreting] = useState(false);
   const [newBet, setNewBet] = useState<Partial<Bet>>({
     type: 'single',
     title: '',
@@ -52,6 +55,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
     }
   };
 
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        if (!blob) continue;
+        
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const base64 = event.target?.result as string;
+          setIsInterpreting(true);
+          try {
+            const interpreted = await interpretBetScreenshot(base64);
+            if (interpreted) {
+              setNewBet(prev => ({
+                ...prev,
+                ...interpreted,
+                matches: interpreted.matches || prev.matches
+              }));
+              alert("Print interpretada com sucesso!");
+            } else {
+              alert("Não foi possível interpretar esta imagem. Tente uma print mais clara.");
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Erro ao processar imagem.");
+          } finally {
+            setIsInterpreting(false);
+          }
+        };
+        reader.readAsDataURL(blob);
+      }
+    }
+  };
+
   const handleRemoveMatch = (index: number) => {
     setNewBet(prev => ({
       ...prev,
@@ -65,7 +103,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
         ...newBet,
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toISOString(),
-        result: 'pending'
+        result: 'pending',
+        isManual: true
       } as Bet);
       setNewBet({
         type: 'single',
@@ -86,23 +125,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
           <h2 className="text-3xl font-black tracking-tight">Painel Administrativo</h2>
           <p className="text-muted-foreground">Gerencie palpites e automação de IA.</p>
         </div>
-        <Button 
-          onClick={onForceGenerate} 
-          disabled={isGenerating}
-          className="bg-primary hover:bg-primary/90 gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-          {isGenerating ? 'Gerando...' : 'Forçar Geração IA'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={onCheckResults} 
+            variant="outline"
+            disabled={isGenerating}
+            className="border-primary/20 text-primary hover:bg-primary/5 gap-2"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Verificar Resultados via IA
+          </Button>
+          <Button 
+            onClick={onForceGenerate} 
+            disabled={isGenerating}
+            className="bg-primary hover:bg-primary/90 gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            {isGenerating ? 'Gerando...' : 'Forçar Geração IA'}
+          </Button>
+        </div>
       </div>
 
-      <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-primary" />
-            Novo Palpite Manual
-          </CardTitle>
-          <CardDescription>Adicione palpites manualmente para os usuários.</CardDescription>
+      <Card className="border-border/50 bg-card/50 backdrop-blur-sm" onPaste={handlePaste}>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              Novo Palpite Manual
+            </CardTitle>
+            <CardDescription>Adicione palpites manualmente ou cole uma print (CTRL+V).</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {isInterpreting && (
+              <div className="flex items-center gap-2 text-xs text-primary animate-pulse font-bold">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                INTERPRETANDO...
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2 border-dashed border-primary/40 text-primary hover:bg-primary/5"
+              onClick={() => alert("Clique aqui e aperte CTRL+V para colar a print da sua aposta.")}
+            >
+              <ImageIcon className="w-4 h-4" />
+              Colar Print (CTRL+V)
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-4">

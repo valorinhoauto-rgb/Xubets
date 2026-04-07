@@ -9,6 +9,7 @@ export interface Bet {
   date: string;
   isVip: boolean;
   result?: 'win' | 'loss' | 'pending';
+  isManual?: boolean;
 }
 
 export interface Match {

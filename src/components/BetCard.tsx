@@ -12,13 +12,21 @@ interface BetCardProps {
   isVipUser: boolean;
   isTaken?: boolean;
   onTakeBet?: () => void;
+  onUpdateResult?: (result: 'win' | 'loss' | 'pending') => void;
 }
 
-export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet }) => {
+export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet, onUpdateResult }) => {
   const isLocked = bet.isVip && !isVipUser;
 
   return (
     <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isLocked ? 'blur-sm grayscale' : ''} ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
+      {/* Result Badge */}
+      {bet.result && bet.result !== 'pending' && (
+        <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-black uppercase tracking-widest z-20 rounded-bl-xl ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+          {bet.result === 'win' ? 'GREEN' : 'RED'}
+        </div>
+      )}
+
       {isLocked && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
           <Crown className="w-12 h-12 text-yellow-400 mb-4 animate-pulse" />
@@ -101,6 +109,35 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
             <ReactMarkdown>{bet.analysis}</ReactMarkdown>
           </div>
         </div>
+
+        {onUpdateResult && (
+          <div className="pt-4 flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className={`flex-1 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-bold ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : ''}`}
+              onClick={() => onUpdateResult('win')}
+            >
+              GREEN
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className={`flex-1 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold ${bet.result === 'loss' ? 'bg-destructive text-destructive-foreground' : ''}`}
+              onClick={() => onUpdateResult('loss')}
+            >
+              RED
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="text-muted-foreground"
+              onClick={() => onUpdateResult('pending')}
+            >
+              LIMPAR
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

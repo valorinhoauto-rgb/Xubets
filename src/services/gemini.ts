@@ -1,9 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+const apiKey = process.env.GEMINI_API_KEY || "";
 if (!apiKey) {
-  console.error("VITE_GEMINI_API_KEY is missing! Check your Netlify environment variables.");
+  console.error("GEMINI_API_KEY is missing! Check your environment variables.");
 }
 const ai = new GoogleGenAI({ apiKey });
 
@@ -90,11 +90,24 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
       ];
     }
 
-    return await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config
-    });
+    try {
+      return await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config
+      });
+    } catch (error: any) {
+      // Fallback to base model if tools fail or quota hit
+      if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+        console.warn("Quota exceeded for tools, falling back to base model...");
+        return await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt + " (Nota: Use seu conhecimento interno se a busca falhar)",
+          config: { ...config, tools: [] }
+        });
+      }
+      throw error;
+    }
   };
 
   try {
@@ -119,5 +132,82 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   } catch (error) {
     console.error("Error generating bets:", error);
     return [];
+  }
+};
+
+export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `Você é um verificador de resultados esportivos. 
+  Para cada aposta abaixo, verifique se os resultados reais dos jogos confirmam o palpite.
+  
+  APOSTAS:
+  ${JSON.stringify(bets.map(b => ({ id: b.id, matches: b.matches })))}
+  
+  REGRAS:
+  1. Use o Google Search para verificar os placares finais.
+  2. Retorne APENAS um JSON no formato: [{"id": "...", "result": "win" | "loss"}]
+  3. Se o jogo ainda não terminou ou não encontrou o resultado, não inclua no JSON.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
+      }
+    });
+    return JSON.parse(response.text || "[]");
+  } catch (error) {
+    console.error("Error checking results via AI:", error);
+    return [];
+  }
+};
+
+export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `Você é um especialista em extração de dados de apostas esportivas.
+  Analise a imagem da aposta (print de casa de aposta) e extraia os detalhes.
+  
+  REGRAS:
+  1. Identifique o tipo de aposta (single, multi ou bingo).
+  2. Extraia o título (ex: "Dupla de Valor", "Múltipla Premier League").
+  3. Extraia as odds totais.
+  4. Extraia cada jogo (homeTeam, awayTeam, league, prediction, odds, time).
+  5. Retorne APENAS um JSON no formato:
+  {
+    "type": "single" | "multi" | "bingo",
+    "title": "...",
+    "odds": 0.0,
+    "matches": [
+      { "homeTeam": "...", "awayTeam": "...", "league": "...", "prediction": "...", "odds": 0.0, "time": "HH:MM" }
+    ],
+    "analysis": "Breve análise baseada nos jogos encontrados"
+  }`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: "image/png",
+            data: base64Image.split(',')[1] || base64Image
+          }
+        }
+      ],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    return JSON.parse(response.text || "null");
+  } catch (error) {
+    console.error("Error interpreting screenshot:", error);
+    return null;
   }
 };

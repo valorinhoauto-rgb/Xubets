@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Zap, Save, RefreshCw, ShieldCheck, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Zap, Save, RefreshCw, ShieldCheck, Image as ImageIcon, Loader2, Key } from 'lucide-react';
 import { Bet, Match } from '../types';
 import { motion } from 'framer-motion';
 import { interpretBetScreenshot } from '../services/gemini';
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
 
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
@@ -19,6 +28,25 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, isGenerating }) => {
   const [isInterpreting, setIsInterpreting] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeyDialog = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setHasApiKey(true);
+    }
+  };
+
   const [newBet, setNewBet] = useState<Partial<Bet>>({
     type: 'single',
     title: '',
@@ -126,6 +154,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
           <p className="text-muted-foreground">Gerencie palpites e automação de IA.</p>
         </div>
         <div className="flex gap-2">
+          {!hasApiKey && (
+            <Button 
+              onClick={handleOpenKeyDialog}
+              variant="destructive"
+              className="gap-2 animate-pulse"
+            >
+              <Key className="w-4 h-4" />
+              Configurar Chave API
+            </Button>
+          )}
           <Button 
             onClick={onCheckResults} 
             variant="outline"

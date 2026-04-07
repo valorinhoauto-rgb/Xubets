@@ -1,13 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-if (!apiKey) {
-  console.error("GEMINI_API_KEY is missing! Check your environment variables.");
-}
-const ai = new GoogleGenAI({ apiKey });
+const getAi = () => {
+  const apiKey = process.env.XUBETS_AI_KEY || process.env.GEMINI_API_KEY || "";
+  return new GoogleGenAI({ apiKey });
+};
 
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
+  const ai = getAi();
   const model = "gemini-3-flash-preview";
   
   // Get current time in Brasilia
@@ -136,7 +136,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 };
 
 export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const ai = getAi();
   const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um verificador de resultados esportivos. 
@@ -167,7 +167,7 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
 };
 
 export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const ai = getAi();
   const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um especialista em extração de dados de apostas esportivas.

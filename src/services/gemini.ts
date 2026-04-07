@@ -43,11 +43,18 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   DATA ALVO: ${dateStr} (Fuso Horário: Brasília/Brasil).
   
   SUA MISSÃO:
-  1. Use o Google Search para encontrar jogos REAIS de futebol que acontecem na data ${dateStr}.
+  1. Use o Google Search para encontrar jogos REAIS de futebol que acontecem EXATAMENTE na data ${dateStr}.
   2. VALIDE as odds em sites como Bet365, Betano ou Oddspedia. NÃO invente odds.
   3. Se o horário atual em Brasília for após as 16:00, foque EXCLUSIVAMENTE nos jogos do dia seguinte (${dateStr}).
   4. NÃO gere jogos que já começaram ou terminaram.
-  5. Se não encontrar jogos reais com odds confirmadas, retorne um array vazio [].
+  5. Se não encontrar jogos reais com odds confirmadas para ${dateStr}, retorne um array vazio [].
+  
+  REGRAS DE INTEGRIDADE:
+  - RIGOR DE DATA: Verifique se o jogo é REALMENTE no dia ${dateStr}. Não confunda com jogos de datas próximas.
+  - CADA TIME SÓ PODE APARECER EM UM ÚNICO JOGO NO DIA. (Ex: Se o Real Madrid joga contra o Barcelona no dia ${dateStr}, o Real Madrid não pode aparecer em outro jogo no mesmo dia).
+  - NÃO REPITA BILHETES. Cada aposta deve ter uma combinação ÚNICA de jogos e mercados. 
+  - Se um time já foi usado em uma aposta "single", ele pode aparecer em uma "multi" ou "bingo", mas o mercado (prediction) deve ser consistente ou o jogo deve ser real.
+  - EVITE HALLUCINAÇÕES: Se você não tem certeza de um jogo ou da data, NÃO o inclua.
   
   VOCÊ DEVE GERAR EXATAMENTE ESTA GRADE DE APOSTAS (Total de 7 apostas):
   - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)

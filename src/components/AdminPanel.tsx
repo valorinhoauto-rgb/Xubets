@@ -24,14 +24,16 @@ interface AdminPanelProps {
   onForceGenerate: () => void;
   onCheckResults: () => void;
   onClearDatabase: () => void;
+  onClearBets: () => void;
   onShowStatus: (message: string, type: 'success' | 'error' | 'info') => void;
   isGenerating: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, onShowStatus, isGenerating }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, onClearBets, onShowStatus, isGenerating }) => {
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showClearBetsConfirm, setShowClearBetsConfirm] = useState(false);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -186,6 +188,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
           </Button>
           <Button 
             onClick={() => {
+              if (showClearBetsConfirm) {
+                onClearBets();
+                setShowClearBetsConfirm(false);
+              } else {
+                setShowClearBetsConfirm(true);
+                setTimeout(() => setShowClearBetsConfirm(false), 3000);
+              }
+            }} 
+            variant={showClearBetsConfirm ? "destructive" : "outline"}
+            disabled={isGenerating}
+            className={`gap-2 transition-all duration-300 ${showClearBetsConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+          >
+            <Trash2 className="w-4 h-4" />
+            {showClearBetsConfirm ? 'CONFIRMAR LIMPEZA' : 'Limpar Apostas'}
+          </Button>
+          <Button 
+            onClick={() => {
               if (showClearConfirm) {
                 onClearDatabase();
                 setShowClearConfirm(false);
@@ -198,8 +217,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
             disabled={isGenerating}
             className={`gap-2 transition-all duration-300 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
           >
-            <Trash2 className="w-4 h-4" />
-            {showClearConfirm ? 'TEM CERTEZA? CLIQUE DE NOVO' : 'Limpar Banco'}
+            <RefreshCw className="w-4 h-4" />
+            {showClearConfirm ? 'CONFIRMAR RESET TOTAL' : 'Resetar Tudo'}
           </Button>
         </div>
       </div>

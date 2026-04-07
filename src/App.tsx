@@ -234,7 +234,24 @@ export default function App() {
         showStatus("O Gemini atingiu o limite de requisições ou não encontrou jogos reais. Tente novamente em alguns minutos.", "error");
         return;
       }
+
+      // Filter out duplicate bets (100% same matches and predictions)
+      const uniqueBets: Bet[] = [];
+      const seenBets = new Set<string>();
+
       for (const b of newBets) {
+        const betFingerprint = b.matches
+          .map(m => `${m.homeTeam}-${m.awayTeam}-${m.prediction}`)
+          .sort()
+          .join('|');
+        
+        if (!seenBets.has(betFingerprint)) {
+          seenBets.add(betFingerprint);
+          uniqueBets.push(b);
+        }
+      }
+
+      for (const b of uniqueBets) {
         await setDoc(doc(db, 'bets', b.id), {
           ...b,
           createdAt: Timestamp.now()
@@ -432,6 +449,26 @@ export default function App() {
     } catch (error) {
       console.error("Error clearing database:", error);
       showStatus("Erro ao limpar banco de dados.", "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleClearCurrentBets = async () => {
+    if (!user || user.role !== 'admin' || isGenerating) return;
+    
+    setIsGenerating(true);
+    showStatus("Limpando lista de apostas...", "info");
+    try {
+      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      const deletePromises = betsSnapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+      
+      setBets([]);
+      showStatus("Lista de apostas limpa com sucesso!", "success");
+    } catch (error) {
+      console.error("Error clearing bets:", error);
+      showStatus("Erro ao limpar apostas.", "error");
     } finally {
       setIsGenerating(false);
     }
@@ -656,6 +693,7 @@ export default function App() {
                   onForceGenerate={handleForceAIGenerate} 
                   onCheckResults={handleCheckResults}
                   onClearDatabase={handleClearDatabase}
+                  onClearBets={handleClearCurrentBets}
                   onShowStatus={showStatus}
                   isGenerating={isGenerating} 
                 />

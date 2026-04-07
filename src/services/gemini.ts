@@ -10,18 +10,22 @@ const ai = new GoogleGenAI({ apiKey });
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
   const model = "gemini-3-flash-preview";
   
-  const prompt = `Analise os jogos de futebol de hoje (${new Date().toLocaleDateString()}) baseando-se nas informações dos sites:
-  - https://oddspedia.com
-  - https://cornerprobet.com
-  - https://www.365scores.com
+  const today = new Date().toLocaleDateString('pt-BR');
+  const prompt = `INSTRUÇÃO CRÍTICA DE INTEGRIDADE: Você é um analista de dados esportivos em tempo real. 
+  Sua tarefa é buscar e validar jogos de futebol que ocorrem EXATAMENTE HOJE, dia ${today}.
   
-  Forneça 3 tipos de apostas:
-  1. Aposta Individual Segura: Odd entre 1.50 e 2.00 (isVip: false).
-  2. Aposta Múltipla Segura: Combinada entre 1.75 e 2.25 (isVip: false).
-  3. Bingo Diário: Odd 10+ (isVip: true).
+  REGRAS OBRIGATÓRIAS:
+  1. Use a ferramenta Google Search para verificar a grade de jogos de hoje em sites como 365Scores, Flashscore e Oddspedia.
+  2. NÃO invente jogos. Se não encontrar jogos que se encaixem nos critérios, retorne uma lista vazia.
+  3. Verifique o fuso horário e garanta que o jogo ainda não começou.
+  4. Para cada palpite, você deve ser capaz de citar a liga e o horário real do confronto.
   
-  Para cada aposta, inclua o título, uma análise técnica profunda e os detalhes dos jogos.
-  Retorne os dados em formato JSON estruturado seguindo o esquema fornecido.`;
+  CATEGORIAS REQUERIDAS:
+  - Aposta Individual: Odd 1.50 a 2.00 (isVip: false).
+  - Aposta Múltipla: Combinada de 2 ou 3 jogos com Odd total ~2.00 (isVip: false).
+  - Bingo Diário: Uma aposta de alta odd (10+) com análise de risco (isVip: true).
+  
+  FORMATO DE SAÍDA: Retorne APENAS o JSON estruturado conforme o esquema, sem texto adicional.`;
 
   const generateWithConfig = async (useTools: boolean) => {
     const config: any = {
@@ -60,8 +64,11 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
     if (useTools) {
       config.tools = [
-        { googleSearch: {} },
-        { urlContext: {} }
+        { 
+          googleSearch: {
+            // No specific config needed, it will use the prompt to search
+          } 
+        }
       ];
     }
 

@@ -558,8 +558,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-      {/* Sidebar / Navigation Rail */}
-      <div className="fixed left-0 top-0 bottom-0 w-20 border-r border-border bg-card z-50 flex flex-col items-center py-8 gap-8">
+      {/* Sidebar / Navigation Rail - Desktop Only */}
+      <div className="hidden md:flex fixed left-0 top-0 bottom-0 w-20 border-r border-border bg-card z-50 flex flex-col items-center py-8 gap-8">
         <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/10">
           <Zap className="text-primary-foreground w-7 h-7 fill-primary-foreground" />
         </div>
@@ -633,8 +633,63 @@ export default function App() {
         </div>
       </div>
 
+      {/* Bottom Navigation - Mobile Only */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border z-50 flex items-center justify-around px-2">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${isBettingTab ? 'text-primary' : 'text-muted-foreground'}`} 
+          onClick={() => setActiveTab('single')}
+        >
+          <Target className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Palpites</span>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'my-stats' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('my-stats')}
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Stats</span>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'vip' ? 'text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('vip')}
+        >
+          <Crown className="w-5 h-5" />
+          <span className="text-[10px] font-bold">VIP</span>
+        </Button>
+
+        {user.role === 'admin' && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'admin' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => setActiveTab('admin')}
+          >
+            <ShieldCheck className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Admin</span>
+          </Button>
+        )}
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 text-muted-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Sair</span>
+        </Button>
+      </div>
+
       {/* Main Content */}
-      <main className="pl-20 min-h-screen">
+      <main className="pl-0 md:pl-20 min-h-screen pb-20 md:pb-0">
         {status && (
           <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-3 max-w-md ${
             status.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 
@@ -648,10 +703,10 @@ export default function App() {
           </div>
         )}
 
-        <header className="h-20 border-b border-border flex items-center justify-between px-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
+        <header className="h-20 border-b border-border flex items-center justify-between px-4 md:px-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
           <div>
             <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Sua vantagem inteligente no jogo.</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground font-medium uppercase tracking-widest">Sua vantagem inteligente no jogo.</p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -669,24 +724,24 @@ export default function App() {
           </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6 md:space-y-8">
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
               {isBettingTab ? (
-                <TabsList className="bg-card border border-border p-1 h-12">
-                  <TabsTrigger value="single" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                <TabsList className="bg-card border border-border p-1 h-12 w-full lg:w-auto overflow-x-auto justify-start lg:justify-center">
+                  <TabsTrigger value="single" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
                     <Target className="w-4 h-4" /> Individual
                   </TabsTrigger>
-                  <TabsTrigger value="multi" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                  <TabsTrigger value="multi" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
                     <Layers className="w-4 h-4" /> Múltipla
                   </TabsTrigger>
-                  <TabsTrigger value="bingo" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                  <TabsTrigger value="bingo" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
                     <Trophy className="w-4 h-4" /> Bingo
                   </TabsTrigger>
                 </TabsList>
               ) : (
                 <div className="h-12 flex items-center">
-                  <h2 className="text-2xl font-black tracking-tight uppercase">
+                  <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase">
                     {activeTab === 'my-stats' ? 'Meu Desempenho' : 
                      activeTab === 'vip' ? 'Área VIP' : 
                      activeTab === 'admin' ? 'Painel Admin' : 'Configurações'}
@@ -694,29 +749,33 @@ export default function App() {
                 </div>
               )}
 
-              <div className="flex items-center gap-6 bg-card border border-border px-6 py-3 rounded-2xl">
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
+              <div className="flex items-center justify-between lg:justify-end gap-4 md:gap-6 bg-card border border-border px-4 md:px-6 py-3 rounded-2xl overflow-x-auto">
+                <div className="flex flex-col min-w-max">
+                  <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xl font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                    <span className={`text-sm md:text-base font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
                       {myPerformance > 0 ? '+' : ''}{myPerformance.toFixed(1)}u
                     </span>
-                    {myPerformance >= 0 ? <TrendingUp className="w-4 h-4 text-primary" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
+                    {myPerformance >= 0 ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-primary" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-destructive" />}
                   </div>
                 </div>
-                <Separator orientation="vertical" className="h-8 bg-border" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Plataforma</span>
+                
+                <Separator orientation="vertical" className="h-8 bg-border/50" />
+                
+                <div className="flex flex-col min-w-max">
+                  <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Plataforma</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
+                    <span className={`text-sm md:text-base font-black ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
                       {totalUnits > 0 ? '+' : ''}{totalUnits.toFixed(1)}u
                     </span>
                   </div>
                 </div>
-                <Separator orientation="vertical" className="h-8 bg-border" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">ROI</span>
-                  <span className="text-xl font-black text-foreground">{calculateROI()}</span>
+
+                <Separator orientation="vertical" className="h-8 bg-border/50" />
+
+                <div className="flex flex-col min-w-max">
+                  <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground">ROI</span>
+                  <span className="text-sm md:text-base font-black text-foreground">{calculateROI()}</span>
                 </div>
               </div>
             </div>

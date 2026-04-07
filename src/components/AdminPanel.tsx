@@ -165,17 +165,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-tight">Painel Administrativo</h2>
-          <p className="text-muted-foreground">Gerencie palpites e automação de IA.</p>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight">Painel Administrativo</h2>
+          <p className="text-sm text-muted-foreground">Gerencie palpites e automação de IA.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           {!hasApiKey && (
             <Button 
               onClick={handleOpenKeyDialog}
               variant="destructive"
-              className="gap-2 animate-pulse"
+              className="flex-1 md:flex-none gap-2 animate-pulse text-xs h-9"
             >
               <Key className="w-4 h-4" />
               Configurar Chave API
@@ -185,18 +185,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             onClick={onCheckResults} 
             variant="outline"
             disabled={isGenerating}
-            className="border-primary/20 text-primary hover:bg-primary/5 gap-2"
+            className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 gap-2 text-xs h-9"
           >
             <ShieldCheck className="w-4 h-4" />
-            Verificar Resultados via IA
+            Verificar Resultados
           </Button>
           <Button 
             onClick={onForceGenerate} 
             disabled={isGenerating}
-            className="bg-primary hover:bg-primary/90 gap-2"
+            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 gap-2 text-xs h-9"
           >
             <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-            {isGenerating ? 'Gerando...' : 'Forçar Geração IA'}
+            {isGenerating ? 'Gerando...' : 'Forçar IA'}
           </Button>
           <Button 
             onClick={() => {
@@ -210,10 +210,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             }} 
             variant={showClearBetsConfirm ? "destructive" : "outline"}
             disabled={isGenerating}
-            className={`gap-2 transition-all duration-300 ${showClearBetsConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+            className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearBetsConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
           >
             <Trash2 className="w-4 h-4" />
-            {showClearBetsConfirm ? 'CONFIRMAR LIMPEZA' : 'Limpar Apostas'}
+            {showClearBetsConfirm ? 'CONFIRMAR' : 'Limpar Apostas'}
           </Button>
           <Button 
             onClick={() => {
@@ -227,10 +227,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             }} 
             variant={showClearConfirm ? "destructive" : "outline"}
             disabled={isGenerating}
-            className={`gap-2 transition-all duration-300 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+            className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
           >
             <RefreshCw className="w-4 h-4" />
-            {showClearConfirm ? 'CONFIRMAR RESET TOTAL' : 'Resetar Tudo'}
+            {showClearConfirm ? 'CONFIRMAR' : 'Reset Total'}
           </Button>
         </div>
       </div>

@@ -106,40 +106,46 @@ export const PersonalPerformance: React.FC<PersonalPerformanceProps> = ({ bets, 
       </div>
 
       <Card className="bg-card border-border/50">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 md:p-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-black">Resumo de Atividade</CardTitle>
-              <CardDescription>Acompanhe seu progresso em todas as apostas que você seguiu.</CardDescription>
+              <CardTitle className="text-xl md:text-2xl font-black">Resumo de Atividade</CardTitle>
+              <CardDescription className="text-xs md:text-sm">Acompanhe seu progresso em todas as apostas que você seguiu.</CardDescription>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Lucro Total</span>
-              <div className="flex items-center gap-2 justify-end">
-                <span className={`text-3xl font-black ${totalUnits >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            <div className="text-left md:text-right w-full md:w-auto">
+              <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Lucro Total</span>
+              <div className="flex items-center gap-2 justify-start md:justify-end">
+                <span className={`text-2xl md:text-3xl font-black ${totalUnits >= 0 ? 'text-primary' : 'text-destructive'}`}>
                   {totalUnits > 0 ? '+' : ''}{totalUnits.toFixed(1)}u
                 </span>
-                {totalUnits >= 0 ? <TrendingUp className="w-6 h-6 text-primary" /> : <TrendingDown className="w-6 h-6 text-destructive" />}
+                {totalUnits >= 0 ? <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-primary" /> : <TrendingDown className="w-5 h-5 md:w-6 md:h-6 text-destructive" />}
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 md:p-6">
           <div className="space-y-4">
-            <div className="grid grid-cols-4 text-[10px] uppercase tracking-widest font-black text-muted-foreground pb-2 border-b border-border">
+            <div className="hidden md:grid grid-cols-4 text-[10px] uppercase tracking-widest font-black text-muted-foreground pb-2 border-b border-border">
               <span>Data</span>
               <span>Título</span>
               <span>Tipo</span>
               <span className="text-right">Resultado</span>
             </div>
             {settledBets.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(bet => (
-              <div key={bet.id} className="grid grid-cols-4 items-center py-2 border-b border-border/30 last:border-0">
-                <span className="text-xs font-medium">{new Date(bet.date).toLocaleDateString()}</span>
-                <span className="text-sm font-bold truncate">{bet.title}</span>
-                <span className="text-xs uppercase font-bold text-muted-foreground">{bet.type}</span>
-                <div className="text-right">
-                  <span className={`text-xs font-black px-2 py-1 rounded-md ${bet.result === 'win' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
-                    {bet.result === 'win' ? `+${(bet.odds - 1).toFixed(1)}u` : '-1.0u'}
-                  </span>
+              <div key={bet.id} className="flex flex-col md:grid md:grid-cols-4 items-start md:items-center py-3 md:py-2 border-b border-border/30 last:border-0 gap-2 md:gap-0">
+                <div className="flex justify-between w-full md:contents">
+                  <span className="text-[10px] md:text-xs font-medium text-muted-foreground md:text-foreground">{new Date(bet.date).toLocaleDateString()}</span>
+                  <span className="md:hidden text-[10px] uppercase font-black px-2 py-0.5 rounded bg-accent text-muted-foreground">{bet.type}</span>
+                </div>
+                <span className="text-sm font-bold truncate w-full">{bet.title}</span>
+                <span className="hidden md:inline text-xs uppercase font-bold text-muted-foreground">{bet.type}</span>
+                <div className="flex justify-between items-center w-full md:contents">
+                  <span className="md:hidden text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Resultado:</span>
+                  <div className="text-right">
+                    <span className={`text-xs font-black px-2 py-1 rounded-md ${bet.result === 'win' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                      {bet.result === 'win' ? `+${(bet.odds - 1).toFixed(1)}u` : '-1.0u'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

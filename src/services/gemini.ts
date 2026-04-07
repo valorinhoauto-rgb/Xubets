@@ -49,6 +49,13 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   4. NÃO gere jogos que já começaram ou terminaram.
   5. Se não encontrar jogos reais com odds confirmadas para ${dateStr}, retorne um array vazio [].
   
+  MERCADOS PERMITIDOS (EXPLORE VARIADADE):
+  - Resultado Final (1X2)
+  - Ambas Marcam (Sim/Não)
+  - Gols Asiáticos (Ex: Over 2.25, Under 3.0, Over 2.5)
+  - Handicap Asiático (Ex: -0.5, +1.0, -1.25)
+  - Escanteios Asiáticos (Ex: Over 9.5 Cantos, Under 10.0 Cantos)
+  
   REGRAS DE INTEGRIDADE:
   - RIGOR DE DATA: Verifique se o jogo é REALMENTE no dia ${dateStr}. Não confunda com jogos de datas próximas.
   - CADA TIME SÓ PODE APARECER EM UM ÚNICO JOGO NO DIA. (Ex: Se o Real Madrid joga contra o Barcelona no dia ${dateStr}, o Real Madrid não pode aparecer em outro jogo no mesmo dia).

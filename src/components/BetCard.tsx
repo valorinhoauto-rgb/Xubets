@@ -47,22 +47,22 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
         </div>
       )}
       
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
+      <CardHeader className="p-4 md:pb-2">
+        <div className="flex justify-between items-start gap-2">
           <div className="space-y-1">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              {bet.type === 'single' && <ShieldCheck className="text-primary" />}
-              {bet.type === 'multi' && <Zap className="text-blue-400" />}
-              {bet.type === 'bingo' && <Trophy className="text-yellow-500" />}
-              {bet.title}
+            <CardTitle className="text-lg md:text-xl font-bold flex items-center gap-2 leading-tight">
+              {bet.type === 'single' && <ShieldCheck className="text-primary w-5 h-5 shrink-0" />}
+              {bet.type === 'multi' && <Zap className="text-blue-400 w-5 h-5 shrink-0" />}
+              {bet.type === 'bingo' && <Trophy className="text-yellow-500 w-5 h-5 shrink-0" />}
+              <span className="line-clamp-2">{bet.title}</span>
             </CardTitle>
-            <CardDescription className="text-sm font-medium text-muted-foreground">
+            <CardDescription className="text-xs md:text-sm font-medium text-muted-foreground">
               Odd Total: <span className={`text-primary font-bold ${isLocked ? 'blur-md select-none' : ''}`}>{bet.odds.toFixed(2)}</span>
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-2 shrink-0">
             {bet.isVip && (
-              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1">
+              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1 px-2 py-0 h-6 text-[10px]">
                 <Crown className="w-3 h-3" /> VIP
               </Badge>
             )}
@@ -70,7 +70,7 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
               <Button 
                 size="sm" 
                 variant={isTaken ? "default" : "outline"}
-                className={`h-8 gap-2 font-bold transition-all ${isTaken ? 'bg-primary hover:bg-primary/90' : 'hover:border-primary hover:text-primary'}`}
+                className={`h-7 md:h-8 px-2 md:px-3 gap-1 md:gap-2 text-[10px] md:text-xs font-bold transition-all ${isTaken ? 'bg-primary hover:bg-primary/90' : 'hover:border-primary hover:text-primary'}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onTakeBet();
@@ -78,11 +78,11 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
               >
                 {isTaken ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4" /> PEGUEI
+                    <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGUEI</span>
                   </>
                 ) : (
                   <>
-                    <PlusCircle className="w-4 h-4" /> PEGAR
+                    <PlusCircle className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGAR</span>
                   </>
                 )}
               </Button>
@@ -91,21 +91,21 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0 space-y-4">
+        <div className="space-y-2 md:space-y-3">
           {bet.matches.map((match, idx) => (
-            <div key={idx} className="bg-accent/50 p-3 rounded-lg border border-border/50">
+            <div key={idx} className="bg-accent/50 p-2 md:p-3 rounded-lg border border-border/50">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">{match.league}</span>
-                <span className="text-[10px] flex items-center gap-1 text-muted-foreground">
+                <span className="text-[9px] md:text-[10px] uppercase tracking-wider font-bold text-muted-foreground truncate max-w-[60%]">{match.league}</span>
+                <span className="text-[9px] md:text-[10px] flex items-center gap-1 text-muted-foreground shrink-0">
                   <Clock className="w-3 h-3" /> {match.time}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <div className="font-semibold text-sm">
-                  {match.homeTeam} <span className="text-muted-foreground px-1">vs</span> {match.awayTeam}
+              <div className="flex justify-between items-center gap-2">
+                <div className="font-semibold text-xs md:text-sm truncate">
+                  {match.homeTeam} <span className="text-muted-foreground px-0.5">vs</span> {match.awayTeam}
                 </div>
-                <Badge variant="outline" className={`font-mono text-xs border-primary/20 text-primary ${isLocked ? 'blur-md select-none' : ''}`}>
+                <Badge variant="outline" className={`font-mono text-[9px] md:text-xs border-primary/20 text-primary shrink-0 px-1.5 py-0 h-5 md:h-6 ${isLocked ? 'blur-md select-none' : ''}`}>
                   {isLocked ? 'PALPITE VIP' : `${match.prediction} @ ${match.odds.toFixed(2)}`}
                 </Badge>
               </div>

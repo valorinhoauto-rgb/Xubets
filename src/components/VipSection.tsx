@@ -37,27 +37,27 @@ export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip, subs
   };
 
   return (
-    <div className="py-12 px-4 max-w-4xl mx-auto">
-      <div className="text-center mb-12">
+    <div className="py-6 md:py-12 px-4 max-w-4xl mx-auto">
+      <div className="text-center mb-8 md:mb-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Crown className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-4xl font-black tracking-tight mb-4">XUBETS VIP</h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <Crown className="w-12 h-12 md:w-16 md:h-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">XUBETS VIP</h2>
+          <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
             Acesse as melhores odds, palpites exclusivos e análises profundas do mercado.
             Aumente sua lucratividade com a inteligência do Gemini.
           </p>
         </motion.div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {[
-          { icon: <ShieldCheck className="w-6 h-6 text-primary" />, title: "Segurança Máxima", desc: "Odds entre 1.50 e 2.00 com alta taxa de acerto." },
-          { icon: <Zap className="w-6 h-6 text-blue-400" />, title: "Múltiplas VIP", desc: "Combinações estratégicas para maximizar ganhos." },
-          { icon: <Trophy className="w-6 h-6 text-yellow-500" />, title: "Bingo Exclusivo", desc: "Odds 10+ com análise técnica rigorosa." }
+          { icon: <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-primary" />, title: "Segurança Máxima", desc: "Odds entre 1.50 e 2.00 com alta taxa de acerto." },
+          { icon: <Zap className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />, title: "Múltiplas VIP", desc: "Combinações estratégicas para maximizar ganhos." },
+          { icon: <Trophy className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />, title: "Bingo Exclusivo", desc: "Odds 10+ com análise técnica rigorosa." }
         ].map((feature, idx) => (
           <motion.div
             key={idx}
@@ -65,11 +65,11 @@ export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip, subs
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: idx * 0.1 }}
           >
-            <Card className="bg-card border-border/50">
-              <CardHeader>
+            <Card className="bg-card border-border/50 h-full">
+              <CardHeader className="p-4 md:p-6">
                 <div className="mb-2">{feature.icon}</div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-                <CardDescription>{feature.desc}</CardDescription>
+                <CardTitle className="text-base md:text-lg">{feature.title}</CardTitle>
+                <CardDescription className="text-xs md:text-sm">{feature.desc}</CardDescription>
               </CardHeader>
             </Card>
           </motion.div>
@@ -77,37 +77,37 @@ export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip, subs
       </div>
 
       <motion.div
-        className="mt-12"
+        className="mt-8 md:mt-12"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
         <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20 shadow-2xl overflow-hidden">
           <div className="absolute top-0 right-0 p-4">
-            <Crown className="w-24 h-24 text-yellow-500/10 -mr-8 -mt-8 rotate-12" />
+            <Crown className="w-16 h-16 md:w-24 md:h-24 text-yellow-500/10 -mr-4 -mt-4 md:-mr-8 md:-mt-8 rotate-12" />
           </div>
-          <CardContent className="p-8 text-center">
-            <h3 className="text-2xl font-bold mb-2">Plano Mensal VIP</h3>
-            <div className="text-5xl font-black mb-6">
-              R$ 29,90<span className="text-lg font-normal text-muted-foreground">/mês</span>
+          <CardContent className="p-6 md:p-8 text-center">
+            <h3 className="text-xl md:text-2xl font-bold mb-2">Plano Mensal VIP</h3>
+            <div className="text-4xl md:text-5xl font-black mb-6">
+              R$ 29,90<span className="text-base md:text-lg font-normal text-muted-foreground">/mês</span>
             </div>
             <ul className="space-y-3 mb-8 text-left max-w-xs mx-auto">
-              <li className="flex items-center gap-2 text-sm">
+              <li className="flex items-center gap-2 text-xs md:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" /> Acesso a todas as odds VIP
               </li>
-              <li className="flex items-center gap-2 text-sm">
+              <li className="flex items-center gap-2 text-xs md:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" /> Notificações em tempo real
               </li>
-              <li className="flex items-center gap-2 text-sm">
+              <li className="flex items-center gap-2 text-xs md:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" /> Suporte prioritário
               </li>
-              <li className="flex items-center gap-2 text-sm">
+              <li className="flex items-center gap-2 text-xs md:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" /> Gráficos de performance avançados
               </li>
             </ul>
             <Button 
               size="lg" 
-              className={`w-full max-w-sm font-bold text-lg h-14 ${
+              className={`w-full max-w-sm font-bold text-base md:text-lg h-12 md:h-14 ${
                 subscriptionStatus === 'pending' 
                   ? 'bg-accent text-muted-foreground' 
                   : 'bg-yellow-500 hover:bg-yellow-600 text-black'

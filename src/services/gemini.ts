@@ -2,7 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
 const getAi = () => {
-  const apiKey = process.env.XUBETS_AI_KEY || process.env.GEMINI_API_KEY || "";
+  // @ts-ignore - process.env is shimmed by the platform for GEMINI_API_KEY
+  const apiKey = import.meta.env.VITE_XUBETS_AI_KEY || process.env.GEMINI_API_KEY || "";
   return new GoogleGenAI({ apiKey });
 };
 

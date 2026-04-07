@@ -19,22 +19,24 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   Retorne os dados em formato JSON estruturado seguindo exatamente o esquema fornecido.`;
 
   try {
+    const tools: any[] = [
+      { googleSearch: {} },
+      { 
+        urlContext: { 
+          urls: [
+            "https://oddspedia.com",
+            "https://cornerprobet.com",
+            "https://www.365scores.com"
+          ]
+        } 
+      }
+    ];
+
     const response = await ai.models.generateContent({
       model,
       contents: prompt,
       config: {
-        tools: [
-          { googleSearch: {} },
-          { 
-            urlContext: { 
-              urls: [
-                "https://oddspedia.com",
-                "https://cornerprobet.com",
-                "https://www.365scores.com"
-              ]
-            } 
-          }
-        ],
+        tools: tools,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,

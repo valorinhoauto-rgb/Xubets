@@ -128,38 +128,12 @@ export default function App() {
   useEffect(() => {
     const seedData = async () => {
       if (!user || user.role !== 'admin' || seedingRef.current) return;
-      if (bets.length > 0 || performanceData.length > 0) return;
+      if (bets.length > 0) return;
       
       seedingRef.current = true;
-      console.log("Seeding realistic performance data...");
-      const initialPerf: PerformanceData[] = [
-        { date: '2026-03-30', units: 1.2, type: 'single' },
-        { date: '2026-03-31', units: -1.0, type: 'single' },
-        { date: '2026-04-01', units: 0.8, type: 'single' },
-        { date: '2026-04-02', units: -1.0, type: 'single' },
-        { date: '2026-04-03', units: 1.5, type: 'single' },
-        { date: '2026-04-04', units: -0.5, type: 'single' },
-        { date: '2026-04-05', units: 1.1, type: 'single' },
-        { date: '2026-04-06', units: -1.0, type: 'single' },
-        { date: '2026-04-01', units: 2.1, type: 'multi' },
-        { date: '2026-04-02', units: -1.0, type: 'multi' },
-        { date: '2026-04-03', units: -1.0, type: 'multi' },
-        { date: '2026-04-04', units: 2.5, type: 'multi' },
-        { date: '2026-04-05', units: -1.0, type: 'multi' },
-        { date: '2026-04-01', units: -0.1, type: 'bingo' },
-        { date: '2026-04-02', units: -0.1, type: 'bingo' },
-        { date: '2026-04-03', units: 1.2, type: 'bingo' },
-        { date: '2026-04-04', units: -0.1, type: 'bingo' },
-        { date: '2026-04-05', units: -0.1, type: 'bingo' },
-      ];
-
+      
       try {
-        for (const p of initialPerf) {
-          const id = `${p.type}_${p.date.replace(/-/g, '')}`;
-          await setDoc(doc(db, 'performance', id), p);
-        }
-        
-        // Generate initial bets via Gemini if empty
+        // Only generate initial bets via Gemini if empty, NO fake performance
         const initialBets = await generateDailyBets(user.isVip);
         for (const b of initialBets) {
           await setDoc(doc(db, 'bets', b.id), { ...b, createdAt: Timestamp.now() });
@@ -170,7 +144,7 @@ export default function App() {
     };
     
     if (authReady && user) seedData();
-  }, [authReady, user, bets.length, performanceData.length]);
+  }, [authReady, user, bets.length]);
 
   const handleLogin = async () => {
     try {
@@ -282,7 +256,20 @@ export default function App() {
     );
   }
 
-  const filteredBets = bets.filter(b => b.type === activeTab);
+  // ROI calculation
+  const calculateROI = () => {
+    if (performanceData.length === 0) return "0.0%";
+    const totalInvested = performanceData.length; // Assuming 1u per bet for ROI calculation
+    const totalProfit = performanceData.reduce((acc, curr) => acc + curr.units, 0);
+    const roi = (totalProfit / totalInvested) * 100;
+    return `${roi.toFixed(1)}%`;
+  };
+
+  const filteredBets = bets.filter(b => {
+    if (activeTab === 'vip') return b.isVip;
+    if (activeTab === 'admin') return true;
+    return b.type === activeTab && !b.isVip;
+  });
   const tabPerformance = performanceData.filter(p => p.type === (activeTab === 'vip' ? 'single' : activeTab));
   const totalUnits = performanceData.reduce((acc, curr) => acc + curr.units, 0);
 
@@ -295,13 +282,31 @@ export default function App() {
         </div>
         
         <nav className="flex flex-col gap-4 flex-1">
-          <Button variant="ghost" size="icon" className={`w-12 h-12 rounded-xl ${activeTab !== 'vip' && activeTab !== 'admin' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`} onClick={() => setActiveTab('single')}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`w-12 h-12 rounded-xl ${activeTab === 'single' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`} 
+            onClick={() => setActiveTab('single')}
+            title="Individual"
+          >
             <LayoutDashboard className="w-6 h-6" />
           </Button>
-          <Button variant="ghost" size="icon" className="w-12 h-12 rounded-xl hover:bg-accent text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`w-12 h-12 rounded-xl ${activeTab === 'multi' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+            onClick={() => setActiveTab('multi')}
+            title="Múltipla"
+          >
             <BarChart3 className="w-6 h-6" />
           </Button>
-          <Button variant="ghost" size="icon" className="w-12 h-12 rounded-xl hover:bg-accent text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`w-12 h-12 rounded-xl ${activeTab === 'bingo' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+            onClick={() => setActiveTab('bingo')}
+            title="Bingo"
+          >
             <Star className="w-6 h-6" />
           </Button>
         </nav>
@@ -390,7 +395,7 @@ export default function App() {
                 <Separator orientation="vertical" className="h-8 bg-border" />
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">ROI</span>
-                  <span className="text-xl font-black text-foreground">12.4%</span>
+                  <span className="text-xl font-black text-foreground">{calculateROI()}</span>
                 </div>
               </div>
             </div>

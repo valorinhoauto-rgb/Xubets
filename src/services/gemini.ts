@@ -19,7 +19,7 @@ const getAi = () => {
 
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
   const ai = getAi();
-  const model = "gemini-1.5-flash";
+  const model = "gemini-3-flash-preview";
   
   // Get current time in Brasilia
   const now = new Date();
@@ -127,7 +127,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
     try {
       return await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config
       });
@@ -158,7 +158,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
 export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
   const ai = getAi();
-  const model = "gemini-1.5-flash";
+  const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um verificador de resultados esportivos. 
   Para cada aposta abaixo, verifique se os resultados reais dos jogos confirmam o palpite.
@@ -189,7 +189,7 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
 
 export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
   const ai = getAi();
-  const model = "gemini-1.5-flash";
+  const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um especialista em extração de dados de apostas esportivas.
   Analise a imagem da aposta (print de casa de aposta) e extraia os detalhes.

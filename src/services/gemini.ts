@@ -1,15 +1,29 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
-const getAi = () => {
-  // @ts-ignore - process.env is shimmed by the platform for GEMINI_API_KEY
-  const apiKey = import.meta.env.VITE_XUBETS_AI_KEY || process.env.GEMINI_API_KEY || "";
+type KeyType = 'generate' | 'interpret' | 'check' | 'default';
+
+const getAi = (keyType: KeyType = 'default') => {
+  const keys = {
+    generate: import.meta.env.VITE_XUBETS_GEN_KEY,
+    interpret: import.meta.env.VITE_XUBETS_INTERPRET_KEY,
+    check: import.meta.env.VITE_XUBETS_CHECK_KEY,
+    default: import.meta.env.VITE_XUBETS_AI_KEY || process.env.GEMINI_API_KEY
+  };
+
+  const apiKey = keys[keyType] || keys.default || "";
   
+  // Log masked key for debugging (only first 4 and last 4 chars)
+  if (apiKey) {
+    const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+    console.log(`[AI Service] Using key for ${keyType}: ${masked}`);
+  }
+
   if (!apiKey) {
     const isNetlify = window.location.hostname.includes('netlify.app');
     const msg = isNetlify 
-      ? "ERRO: Chave API não encontrada no Netlify. Adicione VITE_XUBETS_AI_KEY nas 'Environment Variables' do seu site no painel do Netlify."
-      : "ERRO: Chave API não encontrada. Adicione VITE_XUBETS_AI_KEY nos Secrets do AI Studio.";
+      ? `ERRO: Chave API (${keyType}) não encontrada no Netlify. Adicione VITE_XUBETS_${keyType.toUpperCase()}_KEY nas 'Environment Variables'.`
+      : `ERRO: Chave API (${keyType}) não encontrada. Adicione VITE_XUBETS_${keyType.toUpperCase()}_KEY nos Secrets do AI Studio.`;
     console.error(msg);
     throw new Error(msg);
   }
@@ -18,7 +32,7 @@ const getAi = () => {
 };
 
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
-  const ai = getAi();
+  const ai = getAi('generate');
   const model = "gemini-3-flash-preview";
   
   // Get current time in Brasilia
@@ -157,7 +171,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 };
 
 export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
-  const ai = getAi();
+  const ai = getAi('check');
   const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um verificador de resultados esportivos. 
@@ -181,14 +195,18 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
       }
     });
     return JSON.parse(response.text || "[]");
-  } catch (error) {
-    console.error("Error checking results via AI:", error);
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.message?.includes('quota')) {
+      console.error("Cota do Gemini atingida para verificação de resultados. Tente novamente em 1 minuto.");
+    } else {
+      console.error("Error checking results via AI:", error);
+    }
     return [];
   }
 };
 
 export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
-  const ai = getAi();
+  const ai = getAi('interpret');
   const model = "gemini-3-flash-preview";
 
   const prompt = `Você é um especialista em extração de dados de apostas esportivas.

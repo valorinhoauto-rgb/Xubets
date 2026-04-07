@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Bet } from "../types";
-import { Trophy, Clock, ShieldCheck, Zap, Crown, CheckCircle2, PlusCircle } from 'lucide-react';
+import { Trophy, Clock, ShieldCheck, Zap, Crown, CheckCircle2, PlusCircle, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 
@@ -11,12 +11,27 @@ interface BetCardProps {
   bet: Bet;
   isVipUser: boolean;
   isTaken?: boolean;
+  isChecking?: boolean;
+  isHistory?: boolean;
   onTakeBet?: () => void;
   onUpdateResult?: (result: 'win' | 'loss' | 'pending') => void;
+  onAiCheck?: () => void;
+  onDelete?: () => void;
   onSubscribe?: () => void;
 }
 
-export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet, onUpdateResult, onSubscribe }) => {
+export const BetCard: React.FC<BetCardProps> = ({ 
+  bet, 
+  isVipUser, 
+  isTaken, 
+  isChecking, 
+  isHistory,
+  onTakeBet, 
+  onUpdateResult, 
+  onAiCheck, 
+  onDelete,
+  onSubscribe 
+}) => {
   const isLocked = bet.isVip && !isVipUser;
 
   return (
@@ -66,27 +81,42 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
                 <Crown className="w-3 h-3" /> VIP
               </Badge>
             )}
-            {!isLocked && onTakeBet && (
-              <Button 
-                size="sm" 
-                variant={isTaken ? "default" : "outline"}
-                className={`h-7 md:h-8 px-2 md:px-3 gap-1 md:gap-2 text-[10px] md:text-xs font-bold transition-all ${isTaken ? 'bg-primary hover:bg-primary/90' : 'hover:border-primary hover:text-primary'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTakeBet();
-                }}
-              >
-                {isTaken ? (
-                  <>
-                    <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGUEI</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGAR</span>
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {onDelete && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 md:h-8 w-7 md:w-8 p-0 text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                </Button>
+              )}
+              {!isLocked && onTakeBet && (
+                <Button 
+                  size="sm" 
+                  variant={isTaken ? "default" : "outline"}
+                  className={`h-7 md:h-8 px-2 md:px-3 gap-1 md:gap-2 text-[10px] md:text-xs font-bold transition-all ${isTaken ? 'bg-primary hover:bg-primary/90' : 'hover:border-primary hover:text-primary'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTakeBet();
+                  }}
+                >
+                  {isTaken ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGUEI</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden xs:inline">PEGAR</span>
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -113,45 +143,62 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
           ))}
         </div>
 
-        <Separator className="bg-border" />
-
-        <div className="space-y-2">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Análise do Especialista</h4>
-          <div className={`text-sm text-foreground/90 leading-relaxed ${isLocked ? 'blur-md select-none' : ''}`}>
-            {isLocked ? (
-              <p>Esta é uma análise detalhada feita pela nossa IA para garantir a melhor probabilidade de acerto. Assine o VIP para ler o conteúdo completo e entender a estratégia por trás deste palpite.</p>
-            ) : (
-              <ReactMarkdown>{bet.analysis}</ReactMarkdown>
-            )}
-          </div>
-        </div>
+        {!isHistory && (
+          <>
+            <Separator className="bg-border" />
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Análise do Especialista</h4>
+              <div className={`text-sm text-foreground/90 leading-relaxed ${isLocked ? 'blur-md select-none' : ''}`}>
+                {isLocked ? (
+                  <p>Esta é uma análise detalhada feita pela nossa IA para garantir a melhor probabilidade de acerto. Assine o VIP para ler o conteúdo completo e entender a estratégia por trás deste palpite.</p>
+                ) : (
+                  <ReactMarkdown>{bet.analysis}</ReactMarkdown>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {onUpdateResult && (
-          <div className="pt-4 flex gap-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className={`flex-1 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-bold ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : ''}`}
-              onClick={() => onUpdateResult('win')}
-            >
-              GREEN
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className={`flex-1 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold ${bet.result === 'loss' ? 'bg-destructive text-destructive-foreground' : ''}`}
-              onClick={() => onUpdateResult('loss')}
-            >
-              RED
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="text-muted-foreground"
-              onClick={() => onUpdateResult('pending')}
-            >
-              LIMPAR
-            </Button>
+          <div className="pt-4 space-y-2">
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className={`flex-1 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-bold ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : ''}`}
+                onClick={() => onUpdateResult('win')}
+              >
+                GREEN
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className={`flex-1 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold ${bet.result === 'loss' ? 'bg-destructive text-destructive-foreground' : ''}`}
+                onClick={() => onUpdateResult('loss')}
+              >
+                RED
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="text-muted-foreground"
+                onClick={() => onUpdateResult('pending')}
+              >
+                LIMPAR
+              </Button>
+            </div>
+            {onAiCheck && bet.result === 'pending' && (
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                className="w-full bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 font-bold gap-2"
+                onClick={onAiCheck}
+                disabled={isChecking}
+              >
+                <Zap className={`w-4 h-4 ${isChecking ? 'animate-pulse' : ''}`} />
+                {isChecking ? 'VERIFICANDO...' : 'VERIFICAR RESULTADO (IA)'}
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

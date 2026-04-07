@@ -10,6 +10,7 @@ export interface Bet {
   isVip: boolean;
   result?: 'win' | 'loss' | 'pending';
   isManual?: boolean;
+  createdAt?: any;
 }
 
 export interface Match {

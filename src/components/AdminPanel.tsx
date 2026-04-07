@@ -22,7 +22,6 @@ declare global {
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
   onForceGenerate: () => void;
-  onCheckResults: () => void;
   onClearDatabase: () => void;
   onClearBets: () => void;
   onApproveVip: (uid: string) => void;
@@ -34,7 +33,6 @@ interface AdminPanelProps {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
   onAddBet, 
   onForceGenerate, 
-  onCheckResults, 
   onClearDatabase, 
   onClearBets, 
   onApproveVip,
@@ -181,15 +179,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               Configurar Chave API
             </Button>
           )}
-          <Button 
-            onClick={onCheckResults} 
-            variant="outline"
-            disabled={isGenerating}
-            className="flex-1 md:flex-none border-primary/20 text-primary hover:bg-primary/5 gap-2 text-xs h-9"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Verificar Resultados
-          </Button>
           <Button 
             onClick={onForceGenerate} 
             disabled={isGenerating}

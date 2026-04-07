@@ -19,7 +19,9 @@ import {
   Star,
   Settings,
   Target,
-  Layers
+  Layers,
+  History,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -65,9 +67,10 @@ export default function App() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [checkingBetId, setCheckingBetId] = useState<string | null>(null);
   const [status, setStatus] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings' | 'my-stats'>('single');
-  const isBettingTab = ['single', 'multi', 'bingo'].includes(activeTab);
+  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings' | 'my-stats' | 'history'>('single');
+  const isBettingTab = ['single', 'multi', 'bingo', 'history'].includes(activeTab);
 
   const [userBets, setUserBets] = useState<string[]>([]);
   const seedingRef = useRef(false);
@@ -402,6 +405,30 @@ export default function App() {
     }
   };
 
+  const handleCheckSingleBetResult = async (bet: Bet) => {
+    if (!user || user.role !== 'admin' || checkingBetId) return;
+    setCheckingBetId(bet.id);
+    showStatus(`Verificando resultado para: ${bet.title}...`, "info");
+    
+    try {
+      const results = await checkBetResults([bet]);
+      if (results.length === 0) {
+        showStatus("O Gemini não encontrou o resultado final para este jogo ainda.", "info");
+        return;
+      }
+
+      const res = results[0];
+      await handleUpdateBetResult(res.id, res.result);
+      showStatus(`Resultado atualizado: ${res.result === 'win' ? 'GREEN' : 'RED'}!`, "success");
+    } catch (error: any) {
+      console.error("Error checking single result:", error);
+      const isQuota = error?.message?.includes('429') || error?.message?.includes('quota');
+      showStatus(isQuota ? "Limite de uso do Gemini atingido. Tente novamente em 1 minuto." : "Erro ao verificar resultado.", "error");
+    } finally {
+      setCheckingBetId(null);
+    }
+  };
+
   const handleUpdateBetResult = async (betId: string, result: 'win' | 'loss' | 'pending') => {
     if (!user || user.role !== 'admin') return;
     try {
@@ -524,6 +551,17 @@ export default function App() {
     }
   };
 
+  const handleDeleteBet = async (betId: string) => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      await deleteDoc(doc(db, 'bets', betId));
+      showStatus("Aposta removida com sucesso!", "success");
+    } catch (error) {
+      console.error("Error deleting bet:", error);
+      showStatus("Erro ao remover aposta.", "error");
+    }
+  };
+
   const handleTakeBet = async (betId: string) => {
     if (!user) return;
     try {
@@ -550,10 +588,23 @@ export default function App() {
   };
 
   const filteredBets = bets.filter(b => {
-    if (activeTab === 'vip') return b.isVip;
+    const today = new Date().toISOString().split('T')[0];
+    const betDate = b.createdAt instanceof Timestamp 
+      ? b.createdAt.toDate().toISOString().split('T')[0] 
+      : (b.createdAt as any)?.split('T')[0];
+    
+    const isToday = betDate === today;
+    const isPending = b.result === 'pending';
+
+    if (activeTab === 'history') {
+      return !isToday || !isPending;
+    }
+    
+    if (activeTab === 'vip') return b.isVip && isToday && isPending;
     if (activeTab === 'admin') return true;
+    
     if (['single', 'multi', 'bingo'].includes(activeTab)) {
-      return b.type === activeTab;
+      return b.type === activeTab && isToday && isPending;
     }
     return false;
   });
@@ -582,6 +633,16 @@ export default function App() {
             <Target className="w-6 h-6" />
           </Button>
           
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`w-12 h-12 rounded-xl ${activeTab === 'history' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+            onClick={() => setActiveTab('history')}
+            title="Histórico"
+          >
+            <History className="w-6 h-6" />
+          </Button>
+
           <Button 
             variant="ghost" 
             size="icon" 
@@ -686,6 +747,16 @@ export default function App() {
           <Button 
             variant="ghost" 
             size="icon" 
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'history' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <History className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Histórico</span>
+          </Button>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
             className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'my-stats' ? 'text-primary' : 'text-muted-foreground'}`}
             onClick={() => setActiveTab('my-stats')}
           >
@@ -767,7 +838,7 @@ export default function App() {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6 md:space-y-8">
             <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 px-4 md:px-0">
               {isBettingTab ? (
-                <TabsList className="bg-card border border-border p-1 h-12 w-full lg:w-auto overflow-x-auto justify-start lg:justify-center scrollbar-hide">
+                <TabsList className="bg-card border border-border p-1 h-auto min-h-[3rem] w-full lg:w-auto overflow-x-auto overflow-y-hidden justify-start lg:justify-center scrollbar-hide flex-wrap">
                   <TabsTrigger value="single" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
                     <Target className="w-3.5 h-3.5 md:w-4 h-4" /> Individual
                   </TabsTrigger>
@@ -776,6 +847,9 @@ export default function App() {
                   </TabsTrigger>
                   <TabsTrigger value="bingo" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
                     <Trophy className="w-3.5 h-3.5 md:w-4 h-4" /> Bingo
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
+                    <History className="w-3.5 h-3.5 md:w-4 h-4" /> Histórico
                   </TabsTrigger>
                 </TabsList>
               ) : (
@@ -837,7 +911,6 @@ export default function App() {
                 <AdminPanel 
                   onAddBet={handleAddManualBet} 
                   onForceGenerate={handleForceAIGenerate} 
-                  onCheckResults={handleCheckResults}
                   onClearDatabase={handleClearDatabase}
                   onClearBets={handleClearCurrentBets}
                   onApproveVip={handleApproveVip}
@@ -854,14 +927,16 @@ export default function App() {
               </TabsContent>
             )}
 
-            {['single', 'multi', 'bingo'].map((type) => (
+            {['single', 'multi', 'bingo', 'history'].map((type) => (
               <TabsContent key={type} value={type} className="mt-0 space-y-8">
                 <div className="grid lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between px-3 md:px-0">
-                      <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">Palpites do Dia</h3>
+                      <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">
+                        {type === 'history' ? 'Histórico de Apostas' : 'Palpites do Dia'}
+                      </h3>
                       <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 text-[10px] md:text-xs">
-                        {new Date().toLocaleDateString()}
+                        {type === 'history' ? 'Anteriores' : new Date().toLocaleDateString()}
                       </Badge>
                     </div>
                     
@@ -885,8 +960,12 @@ export default function App() {
                                 bet={bet} 
                                 isVipUser={user.isVip} 
                                 isTaken={userBets.includes(bet.id)}
+                                isChecking={checkingBetId === bet.id}
+                                isHistory={type === 'history'}
                                 onTakeBet={() => handleTakeBet(bet.id)}
                                 onUpdateResult={user.role === 'admin' ? (res) => handleUpdateBetResult(bet.id, res) : undefined}
+                                onAiCheck={user.role === 'admin' && type === 'history' ? () => handleCheckSingleBetResult(bet) : undefined}
+                                onDelete={user.role === 'admin' ? () => handleDeleteBet(bet.id) : undefined}
                                 onSubscribe={() => setActiveTab('vip')}
                               />
                             </motion.div>

@@ -10,14 +10,18 @@ const ai = new GoogleGenAI({ apiKey });
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
   const model = "gemini-3-flash-preview";
   
-  const prompt = `Analise os jogos de futebol de hoje (${new Date().toLocaleDateString()}) e forneça 3 tipos de apostas:
-  1. Aposta Individual Segura: Odd entre 1.50 e 2.00 (Marcar como isVip: false).
-  2. Aposta Múltipla Segura: Combinada entre 1.75 e 2.25 (Marcar como isVip: false).
-  3. Bingo Diário: Odd 10+ (Marcar como isVip: true).
+  const prompt = `Analise os jogos de futebol de hoje (${new Date().toLocaleDateString()}) baseando-se nas informações dos sites:
+  - https://oddspedia.com
+  - https://cornerprobet.com
+  - https://www.365scores.com
   
-  Para cada aposta, inclua o título, uma análise técnica profunda baseada em estatísticas de escanteios, gols e probabilidade de vitória, e os detalhes dos jogos (times, liga, palpite, odd, horário).
+  Forneça 3 tipos de apostas:
+  1. Aposta Individual Segura: Odd entre 1.50 e 2.00 (isVip: false).
+  2. Aposta Múltipla Segura: Combinada entre 1.75 e 2.25 (isVip: false).
+  3. Bingo Diário: Odd 10+ (isVip: true).
   
-  Retorne os dados em formato JSON estruturado seguindo exatamente o esquema fornecido.`;
+  Para cada aposta, inclua o título, uma análise técnica profunda e os detalhes dos jogos.
+  Retorne os dados em formato JSON estruturado seguindo o esquema fornecido.`;
 
   const generateWithConfig = async (useTools: boolean) => {
     const config: any = {
@@ -57,15 +61,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
     if (useTools) {
       config.tools = [
         { googleSearch: {} },
-        { 
-          urlContext: { 
-            urls: [
-              "https://oddspedia.com",
-              "https://cornerprobet.com",
-              "https://www.365scores.com"
-            ]
-          } 
-        }
+        { urlContext: {} }
       ];
     }
 

@@ -2,6 +2,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+if (!apiKey) {
+  console.error("VITE_GEMINI_API_KEY is missing! Check your Netlify environment variables.");
+}
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
@@ -14,62 +17,75 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   
   Para cada aposta, inclua o título, uma análise técnica profunda baseada em estatísticas de escanteios, gols e probabilidade de vitória, e os detalhes dos jogos (times, liga, palpite, odd, horário).
   
-  Cruze os dados dos sites fornecidos no contexto (Oddspedia, CornerProBet, 365Scores) para selecionar as melhores odds e probabilidades.
-  
   Retorne os dados em formato JSON estruturado seguindo exatamente o esquema fornecido.`;
 
-  try {
-    const tools: any[] = [
-      { googleSearch: {} },
-      { 
-        urlContext: { 
-          urls: [
-            "https://oddspedia.com",
-            "https://cornerprobet.com",
-            "https://www.365scores.com"
-          ]
-        } 
-      }
-    ];
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        tools: tools,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              type: { type: Type.STRING, enum: ["single", "multi", "bingo"] },
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-              odds: { type: Type.NUMBER },
-              analysis: { type: Type.STRING },
-              isVip: { type: Type.BOOLEAN },
-              matches: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    homeTeam: { type: Type.STRING },
-                    awayTeam: { type: Type.STRING },
-                    league: { type: Type.STRING },
-                    prediction: { type: Type.STRING },
-                    odds: { type: Type.NUMBER },
-                    time: { type: Type.STRING }
-                  },
-                  required: ["homeTeam", "awayTeam", "league", "prediction", "odds", "time"]
-                }
+  const generateWithConfig = async (useTools: boolean) => {
+    const config: any = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING, enum: ["single", "multi", "bingo"] },
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            odds: { type: Type.NUMBER },
+            analysis: { type: Type.STRING },
+            isVip: { type: Type.BOOLEAN },
+            matches: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  homeTeam: { type: Type.STRING },
+                  awayTeam: { type: Type.STRING },
+                  league: { type: Type.STRING },
+                  prediction: { type: Type.STRING },
+                  odds: { type: Type.NUMBER },
+                  time: { type: Type.STRING }
+                },
+                required: ["homeTeam", "awayTeam", "league", "prediction", "odds", "time"]
               }
-            },
-            required: ["type", "title", "description", "odds", "analysis", "matches", "isVip"]
-          }
+            }
+          },
+          required: ["type", "title", "description", "odds", "analysis", "matches", "isVip"]
         }
       }
+    };
+
+    if (useTools) {
+      config.tools = [
+        { googleSearch: {} },
+        { 
+          urlContext: { 
+            urls: [
+              "https://oddspedia.com",
+              "https://cornerprobet.com",
+              "https://www.365scores.com"
+            ]
+          } 
+        }
+      ];
+    }
+
+    return await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config
     });
+  };
+
+  try {
+    let response;
+    try {
+      // Try with tools first
+      response = await generateWithConfig(true);
+    } catch (e) {
+      console.warn("Gemini tools failed, falling back to base model:", e);
+      // Fallback without tools
+      response = await generateWithConfig(false);
+    }
 
     const bets: Bet[] = JSON.parse(response.text || "[]").map((b: any) => ({
       ...b,

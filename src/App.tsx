@@ -190,6 +190,10 @@ export default function App() {
     setIsGenerating(true);
     try {
       const newBets = await generateDailyBets(true);
+      if (newBets.length === 0) {
+        alert("O Gemini não conseguiu gerar palpites agora. Verifique sua API Key no Netlify.");
+        return;
+      }
       for (const b of newBets) {
         await setDoc(doc(db, 'bets', b.id), {
           ...b,
@@ -474,7 +478,10 @@ export default function App() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Últimos 7 dias</span>
-                            <span className="text-primary font-bold">+4.5u</span>
+                            <span className={`${tabPerformance.reduce((acc, curr) => acc + curr.units, 0) >= 0 ? 'text-primary' : 'text-destructive'} font-bold`}>
+                              {tabPerformance.reduce((acc, curr) => acc + curr.units, 0) > 0 ? '+' : ''}
+                              {tabPerformance.reduce((acc, curr) => acc + curr.units, 0).toFixed(1)}u
+                            </span>
                           </div>
                         </div>
                       </CardContent>

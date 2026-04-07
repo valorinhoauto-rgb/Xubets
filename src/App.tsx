@@ -153,14 +153,15 @@ export default function App() {
   useEffect(() => {
     if (!user || !authReady) return;
 
-    // Listen to Bets
-    const betsQuery = user.role === 'admin' || user.isVip
-      ? query(collection(db, 'bets'), orderBy('createdAt', 'desc'), limit(20))
-      : query(collection(db, 'bets'), where('isVip', '==', false), orderBy('createdAt', 'desc'), limit(20));
+    // Listen to Bets - Simplified to avoid index errors on user's site
+    const betsQuery = query(collection(db, 'bets'), orderBy('createdAt', 'desc'), limit(50));
 
     const unsubscribeBets = onSnapshot(betsQuery, (snapshot) => {
-      const fetchedBets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bet));
-      setBets(fetchedBets);
+      const allBets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bet));
+      const filtered = user.role === 'admin' || user.isVip
+        ? allBets
+        : allBets.filter(b => !b.isVip);
+      setBets(filtered.slice(0, 20));
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'bets'));
 
@@ -270,9 +271,11 @@ export default function App() {
     showStatus("Iniciando geração de apostas via IA...", "info");
     
     try {
-      // Clear existing NON-MANUAL bets first
-      const betsSnapshot = await getDocs(query(collection(db, 'bets'), where('isManual', '!=', true)));
-      const deletePromises = betsSnapshot.docs.map(d => deleteDoc(d.ref));
+      // Fetch all bets and filter in memory to avoid index issues and missing field issues
+      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      const deletePromises = betsSnapshot.docs
+        .filter(d => !d.data().isManual) // Clear anything that isn't explicitly manual
+        .map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);
 
       const newBets = await generateDailyBets(true);
@@ -300,6 +303,7 @@ export default function App() {
       for (const b of uniqueBets) {
         await setDoc(doc(db, 'bets', b.id), {
           ...b,
+          isManual: false,
           createdAt: Timestamp.now()
         });
       }
@@ -639,31 +643,31 @@ export default function App() {
       {/* Bottom Navigation & Stats - Mobile Only */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col">
         {/* Stats Bar Fixed at Bottom */}
-        <div className="bg-card/95 backdrop-blur-md border-t border-border px-4 py-2 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
+        <div className="bg-card/95 backdrop-blur-md border-t border-border px-2 py-2 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
           <div className="flex flex-col">
-            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
+            <span className="text-[7px] uppercase tracking-wider font-bold text-muted-foreground">Meus Lucros</span>
             <div className="flex items-center gap-1">
-              <span className={`text-xs font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+              <span className={`text-[10px] font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
                 {myPerformance > 0 ? '+' : ''}{myPerformance.toFixed(1)}u
               </span>
-              {myPerformance >= 0 ? <TrendingUp className="w-3 h-3 text-primary" /> : <TrendingDown className="w-3 h-3 text-destructive" />}
+              {myPerformance >= 0 ? <TrendingUp className="w-2.5 h-2.5 text-primary" /> : <TrendingDown className="w-2.5 h-2.5 text-destructive" />}
             </div>
           </div>
           
-          <Separator orientation="vertical" className="h-6 bg-border/50" />
+          <Separator orientation="vertical" className="h-5 bg-border/50" />
           
           <div className="flex flex-col">
-            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">Plataforma</span>
-            <span className={`text-xs font-black ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
+            <span className="text-[7px] uppercase tracking-wider font-bold text-muted-foreground">Plataforma</span>
+            <span className={`text-[10px] font-black ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
               {totalUnits > 0 ? '+' : ''}{totalUnits.toFixed(1)}u
             </span>
           </div>
 
-          <Separator orientation="vertical" className="h-6 bg-border/50" />
+          <Separator orientation="vertical" className="h-5 bg-border/50" />
 
           <div className="flex flex-col">
-            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">ROI</span>
-            <span className="text-xs font-black text-foreground">{calculateROI()}</span>
+            <span className="text-[7px] uppercase tracking-wider font-bold text-muted-foreground">ROI</span>
+            <span className="text-[10px] font-black text-foreground">{calculateROI()}</span>
           </div>
         </div>
 
@@ -738,10 +742,10 @@ export default function App() {
           </div>
         )}
 
-        <header className="h-20 border-b border-border flex items-center justify-between px-4 md:px-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground font-medium uppercase tracking-widest">Sua vantagem inteligente no jogo.</p>
+        <header className="h-16 md:h-20 border-b border-border flex items-center justify-between px-3 md:px-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
+          <div className="max-w-[70%] sm:max-w-none">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight truncate">Dashboard</h2>
+            <p className="text-[8px] md:text-xs text-muted-foreground font-medium uppercase tracking-wider truncate">Sua vantagem inteligente no jogo.</p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -763,15 +767,15 @@ export default function App() {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6 md:space-y-8">
             <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 px-4 md:px-0">
               {isBettingTab ? (
-                <TabsList className="bg-card border border-border p-1 h-12 w-full lg:w-auto overflow-x-auto justify-start lg:justify-center">
-                  <TabsTrigger value="single" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
-                    <Target className="w-4 h-4" /> Individual
+                <TabsList className="bg-card border border-border p-1 h-12 w-full lg:w-auto overflow-x-auto justify-start lg:justify-center scrollbar-hide">
+                  <TabsTrigger value="single" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
+                    <Target className="w-3.5 h-3.5 md:w-4 h-4" /> Individual
                   </TabsTrigger>
-                  <TabsTrigger value="multi" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
-                    <Layers className="w-4 h-4" /> Múltipla
+                  <TabsTrigger value="multi" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
+                    <Layers className="w-3.5 h-3.5 md:w-4 h-4" /> Múltipla
                   </TabsTrigger>
-                  <TabsTrigger value="bingo" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
-                    <Trophy className="w-4 h-4" /> Bingo
+                  <TabsTrigger value="bingo" className="flex-1 lg:flex-none px-2 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm">
+                    <Trophy className="w-3.5 h-3.5 md:w-4 h-4" /> Bingo
                   </TabsTrigger>
                 </TabsList>
               ) : (
@@ -854,9 +858,9 @@ export default function App() {
               <TabsContent key={type} value={type} className="mt-0 space-y-8">
                 <div className="grid lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between px-4 md:px-0">
-                      <h3 className="text-2xl font-black tracking-tight uppercase">Palpites do Dia</h3>
-                      <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">
+                    <div className="flex items-center justify-between px-3 md:px-0">
+                      <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">Palpites do Dia</h3>
+                      <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 text-[10px] md:text-xs">
                         {new Date().toLocaleDateString()}
                       </Badge>
                     </div>

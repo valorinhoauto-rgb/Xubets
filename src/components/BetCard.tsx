@@ -102,8 +102,8 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
                 </span>
               </div>
               <div className="flex justify-between items-center gap-2">
-                <div className="font-semibold text-xs md:text-sm truncate">
-                  {match.homeTeam} <span className="text-muted-foreground px-0.5">vs</span> {match.awayTeam}
+                <div className="font-semibold text-[11px] md:text-sm truncate flex-1 min-w-0">
+                  {match.homeTeam} <span className="text-muted-foreground px-0.5 font-normal">vs</span> {match.awayTeam}
                 </div>
                 <Badge variant="outline" className={`font-mono text-[9px] md:text-xs border-primary/20 text-primary shrink-0 px-1.5 py-0 h-5 md:h-6 ${isLocked ? 'blur-md select-none' : ''}`}>
                   {isLocked ? 'PALPITE VIP' : `${match.prediction} @ ${match.odds.toFixed(2)}`}

@@ -19,7 +19,7 @@ const getAi = () => {
 
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
   const ai = getAi();
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-1.5-flash";
   
   // Get current time in Brasilia
   const now = new Date();
@@ -47,7 +47,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   2. VALIDE as odds em sites como Bet365, Betano ou Oddspedia. NÃO invente odds.
   3. Se o horário atual em Brasília for após as 16:00, foque EXCLUSIVAMENTE nos jogos do dia seguinte (${dateStr}).
   4. NÃO gere jogos que já começaram ou terminaram.
-  5. Se não encontrar jogos reais com odds confirmadas para ${dateStr}, retorne um array vazio [].
+  5. SE NÃO ENCONTRAR JOGOS REAIS COM ODDS CONFIRMADAS PARA ${dateStr}, RETORNE UM ARRAY VAZIO []. NUNCA INVENTE JOGOS OU DATAS.
   
   MERCADOS PERMITIDOS (EXPLORE VARIADADE):
   - Resultado Final (1X2)
@@ -58,10 +58,10 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   
   REGRAS DE INTEGRIDADE:
   - RIGOR DE DATA: Verifique se o jogo é REALMENTE no dia ${dateStr}. Não confunda com jogos de datas próximas.
-  - CADA TIME SÓ PODE APARECER EM UM ÚNICO JOGO NO DIA. (Ex: Se o Real Madrid joga contra o Barcelona no dia ${dateStr}, o Real Madrid não pode aparecer em outro jogo no mesmo dia).
+  - CADA TIME SÓ PODE APARECER EM UM ÚNICO JOGO NO DIA.
   - NÃO REPITA BILHETES. Cada aposta deve ter uma combinação ÚNICA de jogos e mercados. 
-  - Se um time já foi usado em uma aposta "single", ele pode aparecer em uma "multi" ou "bingo", mas o mercado (prediction) deve ser consistente ou o jogo deve ser real.
   - EVITE HALLUCINAÇÕES: Se você não tem certeza de um jogo ou da data, NÃO o inclua.
+  - SE O GOOGLE SEARCH NÃO RETORNAR RESULTADOS PARA ${dateStr}, RETORNE [].
   
   VOCÊ DEVE GERAR EXATAMENTE ESTA GRADE DE APOSTAS (Total de 7 apostas):
   - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)
@@ -127,34 +127,20 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
     try {
       return await ai.models.generateContent({
-        model,
+        model: "gemini-1.5-flash",
         contents: prompt,
         config
       });
     } catch (error: any) {
-      // Fallback to base model if tools fail or quota hit
-      if (error?.message?.includes('429') || error?.message?.includes('quota')) {
-        console.warn("Quota exceeded for tools, falling back to base model...");
-        return await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt + " (Nota: Use seu conhecimento interno se a busca falhar)",
-          config: { ...config, tools: [] }
-        });
-      }
+      // If quota hit, we don't want to fallback to hallucinations for real games
       throw error;
     }
   };
 
   try {
     let response;
-    try {
-      // Try with tools first
-      response = await generateWithConfig(true);
-    } catch (e) {
-      console.warn("Gemini tools failed, falling back to base model:", e);
-      // Fallback without tools
-      response = await generateWithConfig(false);
-    }
+    // Try with tools
+    response = await generateWithConfig(true);
 
     const bets: Bet[] = JSON.parse(response.text || "[]").map((b: any) => ({
       ...b,
@@ -172,7 +158,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
 export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
   const ai = getAi();
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-1.5-flash";
 
   const prompt = `Você é um verificador de resultados esportivos. 
   Para cada aposta abaixo, verifique se os resultados reais dos jogos confirmam o palpite.
@@ -203,7 +189,7 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
 
 export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
   const ai = getAi();
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-1.5-flash";
 
   const prompt = `Você é um especialista em extração de dados de apostas esportivas.
   Analise a imagem da aposta (print de casa de aposta) e extraia os detalhes.

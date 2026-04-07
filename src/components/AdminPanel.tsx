@@ -23,12 +23,14 @@ interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
   onForceGenerate: () => void;
   onCheckResults: () => void;
+  onClearDatabase: () => void;
   isGenerating: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, isGenerating }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, isGenerating }) => {
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -180,6 +182,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
           >
             <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
             {isGenerating ? 'Gerando...' : 'Forçar Geração IA'}
+          </Button>
+          <Button 
+            onClick={() => {
+              if (showClearConfirm) {
+                onClearDatabase();
+                setShowClearConfirm(false);
+              } else {
+                setShowClearConfirm(true);
+                setTimeout(() => setShowClearConfirm(false), 3000);
+              }
+            }} 
+            variant={showClearConfirm ? "destructive" : "outline"}
+            disabled={isGenerating}
+            className={`gap-2 transition-all duration-300 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+          >
+            <Trash2 className="w-4 h-4" />
+            {showClearConfirm ? 'TEM CERTEZA? CLIQUE DE NOVO' : 'Limpar Banco'}
           </Button>
         </div>
       </div>

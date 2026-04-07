@@ -17,7 +17,9 @@ import {
   LayoutDashboard,
   BarChart3,
   Star,
-  Settings
+  Settings,
+  Target,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -40,7 +42,8 @@ import {
   limit,
   Timestamp,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './lib/firebase';
 import { Bet, PerformanceData, UserProfile } from './types';
@@ -50,6 +53,7 @@ import { VipSection } from './components/VipSection';
 import { AuthForm } from './components/AuthForm';
 import { AdminPanel } from './components/AdminPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { PersonalPerformance } from './components/PersonalPerformance';
 import { generateDailyBets, checkBetResults } from './services/gemini';
 
 export default function App() {
@@ -59,7 +63,8 @@ export default function App() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings'>('single');
+  const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings' | 'my-stats'>('single');
+  const isBettingTab = ['single', 'multi', 'bingo'].includes(activeTab);
 
   const [userBets, setUserBets] = useState<string[]>([]);
   const seedingRef = useRef(false);
@@ -321,23 +326,101 @@ export default function App() {
   const handleUpdateBetResult = async (betId: string, result: 'win' | 'loss' | 'pending') => {
     if (!user || user.role !== 'admin') return;
     try {
+      const bet = bets.find(b => b.id === betId);
+      if (!bet || bet.result === result) return;
+
+      // Update the bet result
       await setDoc(doc(db, 'bets', betId), { result }, { merge: true });
       
-      // If result is win/loss, we might want to log it to performance as well
-      // This is a simplified version, you can expand it
-      if (result !== 'pending') {
-        const bet = bets.find(b => b.id === betId);
-        if (bet) {
-          const units = result === 'win' ? (bet.odds - 1) : -1;
+      // Handle performance tracking
+      // 1. If we are setting a result (win/loss) from pending
+      if (bet.result === 'pending' && result !== 'pending') {
+        const units = result === 'win' ? (bet.odds - 1) : -1;
+        await addDoc(collection(db, 'performance'), {
+          date: new Date().toISOString().split('T')[0],
+          units,
+          type: bet.type,
+          betId: bet.id // Link it to the bet
+        });
+      } 
+      // 2. If we are clearing a result (setting to pending)
+      else if (bet.result !== 'pending' && result === 'pending') {
+        // Find and delete the performance entry for this bet
+        const perfSnapshot = await getDocs(query(collection(db, 'performance'), where('betId', '==', bet.id)));
+        const deletePromises = perfSnapshot.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      }
+      // 3. If we are changing from win to loss or vice versa
+      else if (bet.result !== 'pending' && result !== 'pending') {
+        // Update existing performance entry
+        const perfSnapshot = await getDocs(query(collection(db, 'performance'), where('betId', '==', bet.id)));
+        const units = result === 'win' ? (bet.odds - 1) : -1;
+        
+        if (perfSnapshot.empty) {
+          // If for some reason it didn't exist, create it
           await addDoc(collection(db, 'performance'), {
             date: new Date().toISOString().split('T')[0],
             units,
-            type: bet.type
+            type: bet.type,
+            betId: bet.id
           });
+        } else {
+          // Update all entries found (should be only one)
+          const updatePromises = perfSnapshot.docs.map(d => setDoc(d.ref, { units }, { merge: true }));
+          await Promise.all(updatePromises);
         }
       }
     } catch (error) {
       console.error("Error updating bet result:", error);
+    }
+  };
+
+  const handleClearDatabase = async () => {
+    if (!user || user.role !== 'admin') return;
+    
+    setIsGenerating(true);
+    try {
+      // Clear Bets
+      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      let batch = writeBatch(db);
+      let count = 0;
+      
+      for (const d of betsSnapshot.docs) {
+        batch.delete(d.ref);
+        count++;
+        if (count === 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+      
+      // Clear Performance
+      const perfSnapshot = await getDocs(collection(db, 'performance'));
+      batch = writeBatch(db);
+      count = 0;
+      for (const d of perfSnapshot.docs) {
+        batch.delete(d.ref);
+        count++;
+        if (count === 500) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+      
+      // Clear Metadata
+      await deleteDoc(doc(db, 'system', 'metadata'));
+      
+      setBets([]);
+      setPerformanceData([]);
+      console.log("Database cleared successfully");
+    } catch (error) {
+      console.error("Error clearing database:", error);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -389,55 +472,66 @@ export default function App() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className={`w-12 h-12 rounded-xl ${activeTab === 'single' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`} 
+            className={`w-12 h-12 rounded-xl ${isBettingTab ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`} 
             onClick={() => setActiveTab('single')}
-            title="Individual"
+            title="Palpites"
           >
-            <LayoutDashboard className="w-6 h-6" />
+            <Target className="w-6 h-6" />
           </Button>
+          
           <Button 
             variant="ghost" 
             size="icon" 
-            className={`w-12 h-12 rounded-xl ${activeTab === 'multi' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
-            onClick={() => setActiveTab('multi')}
-            title="Múltipla"
+            className={`w-12 h-12 rounded-xl ${activeTab === 'my-stats' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+            onClick={() => setActiveTab('my-stats')}
+            title="Meu Desempenho"
           >
             <BarChart3 className="w-6 h-6" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`w-12 h-12 rounded-xl ${activeTab === 'bingo' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
-            onClick={() => setActiveTab('bingo')}
-            title="Bingo"
-          >
-            <Star className="w-6 h-6" />
-          </Button>
-        </nav>
 
-        <div className="flex flex-col gap-4">
-          {user.role === 'admin' && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`w-12 h-12 rounded-xl ${activeTab === 'admin' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-accent'}`}
-              onClick={() => setActiveTab('admin')}
-            >
-              <Settings className="w-6 h-6" />
-            </Button>
-          )}
           <Button 
             variant="ghost" 
             size="icon" 
-            className={`w-12 h-12 rounded-xl ${activeTab === 'vip' ? 'text-yellow-500 bg-yellow-500/10' : 'text-muted-foreground hover:bg-accent'}`}
+            className={`w-12 h-12 rounded-xl ${activeTab === 'vip' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
             onClick={() => setActiveTab('vip')}
+            title="VIP"
           >
             <Crown className="w-6 h-6" />
           </Button>
-          <Button variant="ghost" size="icon" className={`w-12 h-12 rounded-xl hover:bg-accent ${activeTab === 'settings' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`} onClick={() => setActiveTab('settings')}>
-            <Settings className="w-6 h-6" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-12 h-12 rounded-xl hover:bg-accent text-muted-foreground" onClick={handleLogout}>
+
+          {user.role === 'admin' && (
+            <>
+              <Separator className="bg-border/50 my-2" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`w-12 h-12 rounded-xl ${activeTab === 'admin' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+                onClick={() => setActiveTab('admin')}
+                title="Admin"
+              >
+                <ShieldCheck className="w-6 h-6" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`w-12 h-12 rounded-xl ${activeTab === 'settings' ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`}
+                onClick={() => setActiveTab('settings')}
+                title="Configurações"
+              >
+                <Settings className="w-6 h-6" />
+              </Button>
+            </>
+          )}
+        </nav>
+
+        <div className="flex flex-col gap-4 mt-auto mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="w-12 h-12 rounded-xl text-muted-foreground hover:bg-accent"
+            onClick={handleLogout}
+            title="Sair"
+          >
             <LogOut className="w-6 h-6" />
           </Button>
         </div>
@@ -469,25 +563,27 @@ export default function App() {
         <div className="p-8 max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <TabsList className="bg-card border border-border p-1 h-12">
-                <TabsTrigger value="single" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
-                  <ShieldCheck className="w-4 h-4" /> Individual
-                </TabsTrigger>
-                <TabsTrigger value="multi" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
-                  <Zap className="w-4 h-4" /> Múltipla
-                </TabsTrigger>
-                <TabsTrigger value="bingo" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
-                  <Trophy className="w-4 h-4" /> Bingo
-                </TabsTrigger>
-                <TabsTrigger value="vip" className="px-6 h-10 data-[state=active]:bg-yellow-500 data-[state=active]:text-black font-bold gap-2">
-                  <Crown className="w-4 h-4" /> VIP
-                </TabsTrigger>
-                {user.role === 'admin' && (
-                  <TabsTrigger value="admin" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
-                    <Settings className="w-4 h-4" /> Admin
+              {isBettingTab ? (
+                <TabsList className="bg-card border border-border p-1 h-12">
+                  <TabsTrigger value="single" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                    <Target className="w-4 h-4" /> Individual
                   </TabsTrigger>
-                )}
-              </TabsList>
+                  <TabsTrigger value="multi" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                    <Layers className="w-4 h-4" /> Múltipla
+                  </TabsTrigger>
+                  <TabsTrigger value="bingo" className="px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2">
+                    <Trophy className="w-4 h-4" /> Bingo
+                  </TabsTrigger>
+                </TabsList>
+              ) : (
+                <div className="h-12 flex items-center">
+                  <h2 className="text-2xl font-black tracking-tight uppercase">
+                    {activeTab === 'my-stats' ? 'Meu Desempenho' : 
+                     activeTab === 'vip' ? 'Área VIP' : 
+                     activeTab === 'admin' ? 'Painel Admin' : 'Configurações'}
+                  </h2>
+                </div>
+              )}
 
               <div className="flex items-center gap-6 bg-card border border-border px-6 py-3 rounded-2xl">
                 <div className="flex flex-col">
@@ -520,12 +616,17 @@ export default function App() {
               <VipSection onSubscribe={handleSubscribe} isVip={user.isVip} />
             </TabsContent>
 
+            <TabsContent value="my-stats" className="mt-0">
+              <PersonalPerformance bets={bets} userBets={userBets} />
+            </TabsContent>
+
             {user.role === 'admin' && (
               <TabsContent value="admin" className="mt-0">
                 <AdminPanel 
                   onAddBet={handleAddManualBet} 
                   onForceGenerate={handleForceAIGenerate} 
                   onCheckResults={handleCheckResults}
+                  onClearDatabase={handleClearDatabase}
                   isGenerating={isGenerating} 
                 />
               </TabsContent>

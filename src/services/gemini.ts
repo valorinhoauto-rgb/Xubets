@@ -172,7 +172,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
 export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result: 'win' | 'loss' }[]> => {
   const ai = getAi('check');
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-3.1-flash-lite-preview";
 
   const prompt = `Você é um verificador de resultados esportivos. 
   Para cada aposta abaixo, verifique se os resultados reais dos jogos confirmam o palpite.
@@ -207,7 +207,7 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
 
 export const interpretBetScreenshot = async (base64Image: string): Promise<Partial<Bet> | null> => {
   const ai = getAi('interpret');
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-3.1-flash-lite-preview";
 
   const prompt = `Você é um especialista em extração de dados de apostas esportivas.
   Analise a imagem da aposta (print de casa de aposta) e extraia os detalhes.

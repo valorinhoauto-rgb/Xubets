@@ -7,10 +7,13 @@
       "properties": {
         "uid": { "type": "string", "description": "The unique ID of the user." },
         "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "description": "The user's profile picture URL." },
         "isVip": { "type": "boolean", "description": "Whether the user has an active VIP subscription." },
-        "role": { "type": "string", "enum": ["admin", "user"], "description": "The user's role in the platform." }
+        "isAdmin": { "type": "boolean", "description": "Whether the user is an administrator." },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "isVip"]
+      "required": ["uid", "email", "isVip", "isAdmin"]
     },
     "Bet": {
       "title": "Bet Prediction",
@@ -23,6 +26,7 @@
         "odds": { "type": "number" },
         "analysis": { "type": "string" },
         "isVip": { "type": "boolean" },
+        "result": { "type": "string", "enum": ["pending", "win", "loss", "void"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "title", "type", "odds", "analysis", "isVip", "createdAt"]
@@ -37,12 +41,25 @@
         "type": { "type": "string", "enum": ["single", "multi", "bingo"] }
       },
       "required": ["date", "units", "type"]
+    },
+    "SystemAccess": {
+      "title": "System Access Control",
+      "description": "Lists of admin and VIP emails.",
+      "type": "object",
+      "properties": {
+        "adminEmails": { "type": "array", "items": { "type": "string" } },
+        "vipEmails": { "type": "array", "items": { "type": "string" } }
+      }
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profile documents."
+    },
+    "/pending_users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Users awaiting approval."
     },
     "/bets/{betId}": {
       "schema": "Bet",
@@ -51,6 +68,10 @@
     "/performance/{perfId}": {
       "schema": "Performance",
       "description": "Historical performance data."
+    },
+    "/system/access_control": {
+      "schema": "SystemAccess",
+      "description": "Global access control lists."
     }
   }
 }

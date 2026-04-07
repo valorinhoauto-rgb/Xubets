@@ -60,8 +60,8 @@ export const PersonalPerformance: React.FC<PersonalPerformanceProps> = ({ bets, 
               <span className="text-muted-foreground">Win Rate: {singleStats.winRate.toFixed(1)}%</span>
               <span className="font-bold text-primary">{singleStats.wins}W - {singleStats.losses}L</span>
             </div>
-            <div className="mt-4 h-24">
-              <PerformanceChart data={singleStats.chartData} color="#3b82f6" />
+            <div className="mt-4">
+              <PerformanceChart data={singleStats.chartData} color="#3b82f6" height={96} />
             </div>
           </CardContent>
         </Card>
@@ -79,8 +79,8 @@ export const PersonalPerformance: React.FC<PersonalPerformanceProps> = ({ bets, 
               <span className="text-muted-foreground">Win Rate: {multiStats.winRate.toFixed(1)}%</span>
               <span className="font-bold text-primary">{multiStats.wins}W - {multiStats.losses}L</span>
             </div>
-            <div className="mt-4 h-24">
-              <PerformanceChart data={multiStats.chartData} color="#3b82f6" />
+            <div className="mt-4">
+              <PerformanceChart data={multiStats.chartData} color="#3b82f6" height={96} />
             </div>
           </CardContent>
         </Card>
@@ -98,8 +98,8 @@ export const PersonalPerformance: React.FC<PersonalPerformanceProps> = ({ bets, 
               <span className="text-muted-foreground">Win Rate: {bingoStats.winRate.toFixed(1)}%</span>
               <span className="font-bold text-primary">{bingoStats.wins}W - {bingoStats.losses}L</span>
             </div>
-            <div className="mt-4 h-24">
-              <PerformanceChart data={bingoStats.chartData} color="#3b82f6" />
+            <div className="mt-4">
+              <PerformanceChart data={bingoStats.chartData} color="#3b82f6" height={96} />
             </div>
           </CardContent>
         </Card>

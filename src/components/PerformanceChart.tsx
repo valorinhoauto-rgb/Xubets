@@ -5,9 +5,10 @@ import { PerformanceData } from '../types';
 interface PerformanceChartProps {
   data: PerformanceData[];
   color: string;
+  height?: number | string;
 }
 
-export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, color }) => {
+export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, color, height = 200 }) => {
   // Calculate cumulative units
   let cumulative = 0;
   const chartData = data.map(d => {
@@ -24,8 +25,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, color 
   });
 
   return (
-    <div className="h-full w-full min-h-[100px]">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+    <div style={{ width: '100%', height: height }}>
+      <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="colorUnits" x1="0" y1="0" x2="0" y2="1">

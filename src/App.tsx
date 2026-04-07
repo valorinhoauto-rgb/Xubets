@@ -154,7 +154,10 @@ export default function App() {
     if (!user || !authReady) return;
 
     // Listen to Bets
-    const betsQuery = query(collection(db, 'bets'), orderBy('createdAt', 'desc'), limit(20));
+    const betsQuery = user.role === 'admin' || user.isVip
+      ? query(collection(db, 'bets'), orderBy('createdAt', 'desc'), limit(20))
+      : query(collection(db, 'bets'), where('isVip', '==', false), orderBy('createdAt', 'desc'), limit(20));
+
     const unsubscribeBets = onSnapshot(betsQuery, (snapshot) => {
       const fetchedBets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bet));
       setBets(fetchedBets);
@@ -906,6 +909,7 @@ export default function App() {
                         <PerformanceChart 
                           data={tabPerformance} 
                           color={type === 'single' ? '#10b981' : type === 'multi' ? '#3b82f6' : '#eab308'} 
+                          height={240}
                         />
                         <div className="mt-6 space-y-3">
                           <div className="flex justify-between text-sm">

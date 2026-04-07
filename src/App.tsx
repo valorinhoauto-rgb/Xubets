@@ -633,63 +633,95 @@ export default function App() {
         </div>
       </div>
 
-      {/* Bottom Navigation - Mobile Only */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border z-50 flex items-center justify-around px-2">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${isBettingTab ? 'text-primary' : 'text-muted-foreground'}`} 
-          onClick={() => setActiveTab('single')}
-        >
-          <Target className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Palpites</span>
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'my-stats' ? 'text-primary' : 'text-muted-foreground'}`}
-          onClick={() => setActiveTab('my-stats')}
-        >
-          <BarChart3 className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Stats</span>
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'vip' ? 'text-primary' : 'text-muted-foreground'}`}
-          onClick={() => setActiveTab('vip')}
-        >
-          <Crown className="w-5 h-5" />
-          <span className="text-[10px] font-bold">VIP</span>
-        </Button>
+      {/* Bottom Navigation & Stats - Mobile Only */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col">
+        {/* Stats Bar Fixed at Bottom */}
+        <div className="bg-card/95 backdrop-blur-md border-t border-border px-4 py-2 flex items-center justify-between shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
+          <div className="flex flex-col">
+            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
+            <div className="flex items-center gap-1">
+              <span className={`text-xs font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {myPerformance > 0 ? '+' : ''}{myPerformance.toFixed(1)}u
+              </span>
+              {myPerformance >= 0 ? <TrendingUp className="w-3 h-3 text-primary" /> : <TrendingDown className="w-3 h-3 text-destructive" />}
+            </div>
+          </div>
+          
+          <Separator orientation="vertical" className="h-6 bg-border/50" />
+          
+          <div className="flex flex-col">
+            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">Plataforma</span>
+            <span className={`text-xs font-black ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
+              {totalUnits > 0 ? '+' : ''}{totalUnits.toFixed(1)}u
+            </span>
+          </div>
 
-        {user.role === 'admin' && (
+          <Separator orientation="vertical" className="h-6 bg-border/50" />
+
+          <div className="flex flex-col">
+            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">ROI</span>
+            <span className="text-xs font-black text-foreground">{calculateROI()}</span>
+          </div>
+        </div>
+
+        {/* Navigation Bar */}
+        <div className="h-16 bg-card border-t border-border flex items-center justify-around px-2">
           <Button 
             variant="ghost" 
             size="icon" 
-            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'admin' ? 'text-primary' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab('admin')}
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${isBettingTab ? 'text-primary' : 'text-muted-foreground'}`} 
+            onClick={() => setActiveTab('single')}
           >
-            <ShieldCheck className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Admin</span>
+            <Target className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Palpites</span>
           </Button>
-        )}
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'my-stats' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => setActiveTab('my-stats')}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Stats</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'vip' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => setActiveTab('vip')}
+          >
+            <Crown className="w-5 h-5" />
+            <span className="text-[10px] font-bold">VIP</span>
+          </Button>
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 text-muted-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Sair</span>
-        </Button>
+          {user.role === 'admin' && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 ${activeTab === 'admin' ? 'text-primary' : 'text-muted-foreground'}`}
+              onClick={() => setActiveTab('admin')}
+            >
+              <ShieldCheck className="w-5 h-5" />
+              <span className="text-[10px] font-bold">Admin</span>
+            </Button>
+          )}
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-1 text-muted-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Sair</span>
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
-      <main className="pl-0 md:pl-20 min-h-screen pb-20 md:pb-0">
+      <main className="pl-0 md:pl-20 min-h-screen pb-32 md:pb-0">
         {status && (
           <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-3 max-w-md ${
             status.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 
@@ -724,9 +756,9 @@ export default function App() {
           </div>
         </header>
 
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="px-0 md:px-8 py-6 md:p-8 max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6 md:space-y-8">
-            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 px-4 md:px-0">
               {isBettingTab ? (
                 <TabsList className="bg-card border border-border p-1 h-12 w-full lg:w-auto overflow-x-auto justify-start lg:justify-center">
                   <TabsTrigger value="single" className="flex-1 lg:flex-none px-4 md:px-6 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold gap-2 whitespace-nowrap">
@@ -749,7 +781,8 @@ export default function App() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between lg:justify-end gap-4 md:gap-6 bg-card border border-border px-4 md:px-6 py-3 rounded-2xl overflow-x-auto">
+              {/* Stats Bar - Desktop Only (Hidden on Mobile as it's fixed at bottom) */}
+              <div className="hidden lg:flex items-center justify-between lg:justify-end gap-4 md:gap-6 bg-card border border-border px-4 md:px-6 py-3 rounded-2xl overflow-x-auto">
                 <div className="flex flex-col min-w-max">
                   <span className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
                   <div className="flex items-center gap-2">
@@ -818,7 +851,7 @@ export default function App() {
               <TabsContent key={type} value={type} className="mt-0 space-y-8">
                 <div className="grid lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between px-4 md:px-0">
                       <h3 className="text-2xl font-black tracking-tight uppercase">Palpites do Dia</h3>
                       <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5">
                         {new Date().toLocaleDateString()}

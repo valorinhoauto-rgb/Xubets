@@ -20,7 +20,7 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
   const isLocked = bet.isVip && !isVipUser;
 
   return (
-    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
+    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border md:rounded-3xl rounded-none border-x-0 md:border-x ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
       {/* Result Badge */}
       {bet.result && bet.result !== 'pending' && (
         <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-black uppercase tracking-widest z-20 rounded-bl-xl ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>

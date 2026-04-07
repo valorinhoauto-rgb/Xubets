@@ -4,6 +4,16 @@ import { Bet, Match } from "../types";
 const getAi = () => {
   // @ts-ignore - process.env is shimmed by the platform for GEMINI_API_KEY
   const apiKey = import.meta.env.VITE_XUBETS_AI_KEY || process.env.GEMINI_API_KEY || "";
+  
+  if (!apiKey) {
+    const isNetlify = window.location.hostname.includes('netlify.app');
+    const msg = isNetlify 
+      ? "ERRO: Chave API não encontrada no Netlify. Adicione VITE_XUBETS_AI_KEY nas 'Environment Variables' do seu site no painel do Netlify."
+      : "ERRO: Chave API não encontrada. Adicione VITE_XUBETS_AI_KEY nos Secrets do AI Studio.";
+    console.error(msg);
+    throw new Error(msg);
+  }
+  
   return new GoogleGenAI({ apiKey });
 };
 

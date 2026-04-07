@@ -357,16 +357,11 @@ export default function App() {
 
   // ROI calculation
   const calculateROI = () => {
-    // Only count bets that were taken AND have a result
     const takenAndResolved = bets.filter(b => userBets.includes(b.id) && b.result && b.result !== 'pending');
-    const historicalTaken = performanceData.filter(p => p.units !== 0); // Assuming historical are already filtered
+    if (takenAndResolved.length === 0) return "0.0%";
     
-    if (takenAndResolved.length === 0 && historicalTaken.length === 0) return "0.0%";
-    
-    const totalProfit = takenAndResolved.reduce((acc, curr) => acc + (curr.result === 'win' ? curr.odds - 1 : -1), 0) + 
-                        historicalTaken.reduce((acc, curr) => acc + curr.units, 0);
-    
-    const totalInvested = takenAndResolved.length + historicalTaken.length;
+    const totalProfit = takenAndResolved.reduce((acc, curr) => acc + (curr.result === 'win' ? curr.odds - 1 : -1), 0);
+    const totalInvested = takenAndResolved.length;
     const roi = (totalProfit / totalInvested) * 100;
     return `${roi.toFixed(1)}%`;
   };
@@ -378,6 +373,9 @@ export default function App() {
   });
   const tabPerformance = performanceData.filter(p => p.type === (activeTab === 'vip' ? 'single' : activeTab));
   const totalUnits = performanceData.reduce((acc, curr) => acc + curr.units, 0);
+  const myPerformance = bets
+    .filter(b => userBets.includes(b.id) && b.result !== 'pending')
+    .reduce((acc, b) => acc + (b.result === 'win' ? (b.odds - 1) : -1), 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
@@ -493,12 +491,21 @@ export default function App() {
 
               <div className="flex items-center gap-6 bg-card border border-border px-6 py-3 rounded-2xl">
                 <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Performance Total</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Meus Lucros</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xl font-black ${totalUnits >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                    <span className={`text-xl font-black ${myPerformance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                      {myPerformance > 0 ? '+' : ''}{myPerformance.toFixed(1)}u
+                    </span>
+                    {myPerformance >= 0 ? <TrendingUp className="w-4 h-4 text-primary" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
+                  </div>
+                </div>
+                <Separator orientation="vertical" className="h-8 bg-border" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Plataforma</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold ${totalUnits >= 0 ? 'text-primary/70' : 'text-destructive/70'}`}>
                       {totalUnits > 0 ? '+' : ''}{totalUnits.toFixed(1)}u
                     </span>
-                    {totalUnits >= 0 ? <TrendingUp className="w-4 h-4 text-primary" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
                   </div>
                 </div>
                 <Separator orientation="vertical" className="h-8 bg-border" />

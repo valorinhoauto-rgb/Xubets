@@ -10,22 +10,40 @@ const ai = new GoogleGenAI({ apiKey });
 export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
   const model = "gemini-3-flash-preview";
   
-  const today = new Date().toLocaleDateString('pt-BR');
-  const prompt = `INSTRUÇÃO CRÍTICA DE INTEGRIDADE: Você é um analista de dados esportivos em tempo real. 
-  Sua tarefa é buscar e validar jogos de futebol que ocorrem EXATAMENTE HOJE, dia ${today}.
+  // Get current time in Brasilia
+  const now = new Date();
+  const brasiliaTime = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: 'numeric',
+    hour12: false
+  }).format(now);
   
-  REGRAS OBRIGATÓRIAS:
-  1. Use a ferramenta Google Search para verificar a grade de jogos de hoje em sites como 365Scores, Flashscore e Oddspedia.
-  2. NÃO invente jogos. Se não encontrar jogos que se encaixem nos critérios, retorne uma lista vazia.
-  3. Verifique o fuso horário e garanta que o jogo ainda não começou.
-  4. Para cada palpite, você deve ser capaz de citar a liga e o horário real do confronto.
+  const currentHour = parseInt(brasiliaTime);
+  const targetDate = new Date(now);
   
-  CATEGORIAS REQUERIDAS:
-  - Aposta Individual: Odd 1.50 a 2.00 (isVip: false).
-  - Aposta Múltipla: Combinada de 2 ou 3 jogos com Odd total ~2.00 (isVip: false).
-  - Bingo Diário: Uma aposta de alta odd (10+) com análise de risco (isVip: true).
+  // If after 16:00 BRT, look for tomorrow's matches
+  if (currentHour >= 16) {
+    targetDate.setDate(targetDate.getDate() + 1);
+  }
   
-  FORMATO DE SAÍDA: Retorne APENAS o JSON estruturado conforme o esquema, sem texto adicional.`;
+  const dateStr = targetDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  
+  const prompt = `VOCÊ É UM ANALISTA PROFISSIONAL DE APOSTAS ESPORTIVAS (BETTING EXPERT).
+  DATA ALVO: ${dateStr} (Fuso Horário: Brasília/Brasil).
+  
+  SUA MISSÃO:
+  1. Use o Google Search para encontrar jogos REAIS de futebol que acontecem na data ${dateStr}.
+  2. VALIDE as odds em sites como Bet365, Betano ou Oddspedia. NÃO invente odds.
+  3. Se o horário atual em Brasília for após as 16:00, foque EXCLUSIVAMENTE nos jogos do dia seguinte (${dateStr}).
+  4. NÃO gere jogos que já começaram ou terminaram.
+  5. Se não encontrar jogos reais com odds confirmadas, retorne um array vazio [].
+  
+  CATEGORIAS:
+  - single: Odd 1.50 a 2.00 (Segura).
+  - multi: Combinada de 2-3 jogos, Odd total ~2.00.
+  - bingo: Odd 10.00+ (Alta análise).
+  
+  RETORNO: Apenas o JSON puro, sem explicações.`;
 
   const generateWithConfig = async (useTools: boolean) => {
     const config: any = {

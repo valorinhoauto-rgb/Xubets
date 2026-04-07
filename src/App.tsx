@@ -58,6 +58,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin'>('single');
 
   const seedingRef = useRef(false);
+  const autoGenRef = useRef(false);
 
   // Listen for Auth changes
   useEffect(() => {
@@ -189,9 +190,14 @@ export default function App() {
     if (!user || user.role !== 'admin') return;
     setIsGenerating(true);
     try {
+      // Clear existing bets first
+      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      const deletePromises = betsSnapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+
       const newBets = await generateDailyBets(true);
       if (newBets.length === 0) {
-        alert("O Gemini não conseguiu gerar palpites agora. Verifique sua API Key no Netlify.");
+        alert("O Gemini não encontrou jogos reais confirmados para este horário. Tente novamente mais tarde.");
         return;
       }
       for (const b of newBets) {
@@ -204,8 +210,10 @@ export default function App() {
       await setDoc(doc(db, 'system', 'metadata'), {
         lastBetGeneration: new Date().toISOString().split('T')[0]
       }, { merge: true });
+      alert("Grade de apostas atualizada com sucesso!");
     } catch (error) {
       console.error("Error forcing AI generation:", error);
+      alert("Erro ao gerar apostas. Verifique o console.");
     } finally {
       setIsGenerating(false);
     }
@@ -214,8 +222,9 @@ export default function App() {
   // Check for daily generation (00:01 logic)
   useEffect(() => {
     const checkDailyGeneration = async () => {
-      if (!user || user.role !== 'admin' || !authReady) return;
+      if (!user || user.role !== 'admin' || !authReady || autoGenRef.current) return;
       
+      autoGenRef.current = true;
       try {
         const metaDoc = await getDoc(doc(db, 'system', 'metadata'));
         const today = new Date().toISOString().split('T')[0];

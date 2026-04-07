@@ -24,10 +24,11 @@ interface AdminPanelProps {
   onForceGenerate: () => void;
   onCheckResults: () => void;
   onClearDatabase: () => void;
+  onShowStatus: (message: string, type: 'success' | 'error' | 'info') => void;
   isGenerating: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, isGenerating }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, onShowStatus, isGenerating }) => {
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -104,13 +105,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
                 ...interpreted,
                 matches: interpreted.matches || prev.matches
               }));
-              alert("Print interpretada com sucesso!");
+              onShowStatus("Print interpretada com sucesso!", "success");
             } else {
-              alert("Não foi possível interpretar esta imagem. Tente uma print mais clara.");
+              onShowStatus("Não foi possível interpretar esta imagem. Tente uma print mais clara.", "error");
             }
           } catch (err) {
             console.error(err);
-            alert("Erro ao processar imagem.");
+            onShowStatus("Erro ao processar imagem.", "error");
           } finally {
             setIsInterpreting(false);
           }
@@ -223,7 +224,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
               variant="outline" 
               size="sm" 
               className="gap-2 border-dashed border-primary/40 text-primary hover:bg-primary/5"
-              onClick={() => alert("Clique aqui e aperte CTRL+V para colar a print da sua aposta.")}
+              onClick={() => onShowStatus("Clique aqui e aperte CTRL+V para colar a print da sua aposta.", "info")}
             >
               <ImageIcon className="w-4 h-4" />
               Colar Print (CTRL+V)

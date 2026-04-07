@@ -13,13 +13,14 @@ interface BetCardProps {
   isTaken?: boolean;
   onTakeBet?: () => void;
   onUpdateResult?: (result: 'win' | 'loss' | 'pending') => void;
+  onSubscribe?: () => void;
 }
 
-export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet, onUpdateResult }) => {
+export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet, onUpdateResult, onSubscribe }) => {
   const isLocked = bet.isVip && !isVipUser;
 
   return (
-    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isLocked ? 'blur-sm grayscale' : ''} ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
+    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
       {/* Result Badge */}
       {bet.result && bet.result !== 'pending' && (
         <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-black uppercase tracking-widest z-20 rounded-bl-xl ${bet.result === 'win' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
@@ -28,10 +29,21 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
       )}
 
       {isLocked && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
-          <Crown className="w-12 h-12 text-yellow-400 mb-4 animate-pulse" />
-          <p className="text-white font-bold text-lg">Conteúdo VIP</p>
-          <p className="text-white/80 text-sm">Assine para desbloquear</p>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px] group">
+          <div className="bg-card/90 p-6 rounded-2xl border border-yellow-500/30 shadow-2xl flex flex-col items-center text-center max-w-[80%] animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
+              <Crown className="w-10 h-10 text-yellow-500 animate-bounce" />
+            </div>
+            <h3 className="text-xl font-black tracking-tight mb-2">CONTEÚDO VIP</h3>
+            <p className="text-sm text-muted-foreground mb-6">Esta análise e palpite são exclusivos para membros VIP. Junte-se ao time agora!</p>
+            <Button 
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold rounded-xl gap-2"
+              onClick={onSubscribe}
+            >
+              <Zap className="w-4 h-4 fill-current" />
+              QUERO SER VIP
+            </Button>
+          </div>
         </div>
       )}
       
@@ -45,7 +57,7 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
               {bet.title}
             </CardTitle>
             <CardDescription className="text-sm font-medium text-muted-foreground">
-              Odd Total: <span className="text-primary font-bold">{bet.odds.toFixed(2)}</span>
+              Odd Total: <span className={`text-primary font-bold ${isLocked ? 'blur-md select-none' : ''}`}>{bet.odds.toFixed(2)}</span>
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -93,8 +105,8 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
                 <div className="font-semibold text-sm">
                   {match.homeTeam} <span className="text-muted-foreground px-1">vs</span> {match.awayTeam}
                 </div>
-                <Badge variant="outline" className="font-mono text-xs border-primary/20 text-primary">
-                  {match.prediction} @ {match.odds.toFixed(2)}
+                <Badge variant="outline" className={`font-mono text-xs border-primary/20 text-primary ${isLocked ? 'blur-md select-none' : ''}`}>
+                  {isLocked ? 'PALPITE VIP' : `${match.prediction} @ ${match.odds.toFixed(2)}`}
                 </Badge>
               </div>
             </div>
@@ -105,8 +117,12 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTak
 
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Análise do Especialista</h4>
-          <div className="text-sm text-foreground/90 leading-relaxed">
-            <ReactMarkdown>{bet.analysis}</ReactMarkdown>
+          <div className={`text-sm text-foreground/90 leading-relaxed ${isLocked ? 'blur-md select-none' : ''}`}>
+            {isLocked ? (
+              <p>Esta é uma análise detalhada feita pela nossa IA para garantir a melhor probabilidade de acerto. Assine o VIP para ler o conteúdo completo e entender a estratégia por trás deste palpite.</p>
+            ) : (
+              <ReactMarkdown>{bet.analysis}</ReactMarkdown>
+            )}
           </div>
         </div>
 

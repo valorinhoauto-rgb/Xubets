@@ -63,12 +63,18 @@ export default function App() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [status, setStatus] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin' | 'settings' | 'my-stats'>('single');
   const isBettingTab = ['single', 'multi', 'bingo'].includes(activeTab);
 
   const [userBets, setUserBets] = useState<string[]>([]);
   const seedingRef = useRef(false);
   const autoGenRef = useRef(false);
+
+  const showStatus = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setStatus({ message, type });
+    setTimeout(() => setStatus(null), 6000);
+  };
 
   // Listen for Auth changes
   useEffect(() => {
@@ -213,8 +219,10 @@ export default function App() {
   };
 
   const handleForceAIGenerate = async () => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || user.role !== 'admin' || isGenerating) return;
     setIsGenerating(true);
+    showStatus("Iniciando geração de apostas via IA...", "info");
+    
     try {
       // Clear existing NON-MANUAL bets first
       const betsSnapshot = await getDocs(query(collection(db, 'bets'), where('isManual', '!=', true)));
@@ -223,7 +231,7 @@ export default function App() {
 
       const newBets = await generateDailyBets(true);
       if (newBets.length === 0) {
-        alert("O Gemini não encontrou jogos reais confirmados para este horário. Tente novamente mais tarde.");
+        showStatus("O Gemini atingiu o limite de requisições ou não encontrou jogos reais. Tente novamente em alguns minutos.", "error");
         return;
       }
       for (const b of newBets) {
@@ -236,10 +244,11 @@ export default function App() {
       await setDoc(doc(db, 'system', 'metadata'), {
         lastBetGeneration: new Date().toISOString().split('T')[0]
       }, { merge: true });
-      alert("Grade de apostas atualizada com sucesso!");
-    } catch (error) {
+      showStatus("Grade de apostas atualizada com sucesso!", "success");
+    } catch (error: any) {
       console.error("Error forcing AI generation:", error);
-      alert("Erro ao gerar apostas. Verifique o console.");
+      const isQuota = error?.message?.includes('429') || error?.message?.includes('quota');
+      showStatus(isQuota ? "Limite de uso do Gemini atingido. Aguarde um momento." : "Erro ao gerar apostas. Verifique o console.", "error");
     } finally {
       setIsGenerating(false);
     }
@@ -296,28 +305,31 @@ export default function App() {
   }
 
   const handleCheckResults = async () => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || user.role !== 'admin' || isGenerating) return;
     setIsGenerating(true);
+    showStatus("Verificando resultados reais via IA...", "info");
+    
     try {
       const pendingBets = bets.filter(b => b.result === 'pending');
       if (pendingBets.length === 0) {
-        alert("Nenhuma aposta pendente para verificar.");
+        showStatus("Nenhuma aposta pendente para verificar.", "info");
         return;
       }
 
       const results = await checkBetResults(pendingBets);
       if (results.length === 0) {
-        alert("O Gemini não encontrou resultados definitivos para os jogos pendentes ainda.");
+        showStatus("O Gemini não encontrou resultados definitivos para os jogos pendentes ainda.", "info");
         return;
       }
 
       for (const res of results) {
         await handleUpdateBetResult(res.id, res.result);
       }
-      alert(`${results.length} resultados atualizados com sucesso!`);
-    } catch (error) {
+      showStatus(`${results.length} resultados atualizados com sucesso!`, "success");
+    } catch (error: any) {
       console.error("Error checking results:", error);
-      alert("Erro ao verificar resultados.");
+      const isQuota = error?.message?.includes('429') || error?.message?.includes('quota');
+      showStatus(isQuota ? "Limite de uso do Gemini atingido." : "Erro ao verificar resultados.", "error");
     } finally {
       setIsGenerating(false);
     }
@@ -416,9 +428,10 @@ export default function App() {
       
       setBets([]);
       setPerformanceData([]);
-      console.log("Database cleared successfully");
+      showStatus("Banco de dados limpo com sucesso!", "success");
     } catch (error) {
       console.error("Error clearing database:", error);
+      showStatus("Erro ao limpar banco de dados.", "error");
     } finally {
       setIsGenerating(false);
     }
@@ -452,7 +465,10 @@ export default function App() {
   const filteredBets = bets.filter(b => {
     if (activeTab === 'vip') return b.isVip;
     if (activeTab === 'admin') return true;
-    return b.type === activeTab && !b.isVip;
+    if (['single', 'multi', 'bingo'].includes(activeTab)) {
+      return b.type === activeTab;
+    }
+    return false;
   });
   const tabPerformance = performanceData.filter(p => p.type === (activeTab === 'vip' ? 'single' : activeTab));
   const totalUnits = performanceData.reduce((acc, curr) => acc + curr.units, 0);
@@ -539,6 +555,19 @@ export default function App() {
 
       {/* Main Content */}
       <main className="pl-20 min-h-screen">
+        {status && (
+          <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-3 max-w-md ${
+            status.type === 'success' ? 'bg-primary/10 border-primary/20 text-primary' : 
+            status.type === 'error' ? 'bg-destructive/10 border-destructive/20 text-destructive' : 
+            'bg-card border-border text-foreground'
+          }`}>
+            {status.type === 'success' ? <Trophy className="w-5 h-5" /> : 
+             status.type === 'error' ? <ShieldCheck className="w-5 h-5" /> : 
+             <Zap className="w-5 h-5" />}
+            <p className="text-sm font-bold">{status.message}</p>
+          </div>
+        )}
+
         <header className="h-20 border-b border-border flex items-center justify-between px-8 sticky top-0 bg-background/80 backdrop-blur-md z-40">
           <div>
             <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
@@ -627,6 +656,7 @@ export default function App() {
                   onForceGenerate={handleForceAIGenerate} 
                   onCheckResults={handleCheckResults}
                   onClearDatabase={handleClearDatabase}
+                  onShowStatus={showStatus}
                   isGenerating={isGenerating} 
                 />
               </TabsContent>
@@ -671,6 +701,7 @@ export default function App() {
                                 isTaken={userBets.includes(bet.id)}
                                 onTakeBet={() => handleTakeBet(bet.id)}
                                 onUpdateResult={user.role === 'admin' ? (res) => handleUpdateBetResult(bet.id, res) : undefined}
+                                onSubscribe={() => setActiveTab('vip')}
                               />
                             </motion.div>
                           ))}

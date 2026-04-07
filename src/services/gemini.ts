@@ -49,10 +49,20 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   4. NÃO gere jogos que já começaram ou terminaram.
   5. Se não encontrar jogos reais com odds confirmadas, retorne um array vazio [].
   
-  CATEGORIAS:
-  - single: Odd 1.50 a 2.00 (Segura).
-  - multi: Combinada de 2-3 jogos, Odd total ~2.00.
-  - bingo: Odd 10.00+ (Alta análise).
+  VOCÊ DEVE GERAR EXATAMENTE ESTA GRADE DE APOSTAS (Total de 7 apostas):
+  - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)
+  - 1 aposta "multi" FREE (isVip: false, 2-3 jogos, Odd ~2.00)
+  - 1 aposta "bingo" FREE (isVip: false, Odd 10.00+)
+  - 1 aposta "single" VIP (isVip: true, Odd 1.50-2.00)
+  - 1 aposta "multi" VIP (isVip: true, 2-3 jogos, Odd ~2.00)
+  - 1 aposta "bingo" VIP (isVip: true, Odd 10.00+, mínimo 4 jogos)
+  - 1 aposta "bingo" VIP (isVip: true, Odd 50.00+, mínimo 4 jogos)
+  
+  REGRAS PARA BINGOS VIP:
+  - Devem conter no mínimo 4 jogos da grade do dia.
+  - Um bingo VIP deve ter odd total entre 10.00 e 49.99.
+  - O outro bingo VIP deve ter odd total de 50.00 ou mais.
+  - Não há limite máximo de jogos para os bingos.
   
   RETORNO: Apenas o JSON puro, sem explicações.`;
 

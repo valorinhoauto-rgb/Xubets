@@ -191,6 +191,7 @@ export default function App() {
     return () => unsubUserBets();
   }, [user, authReady]);
 
+  /*
   // Seed initial realistic data if empty (Admin only or first run)
   useEffect(() => {
     const seedData = async () => {
@@ -212,6 +213,7 @@ export default function App() {
     
     if (authReady && user) seedData();
   }, [authReady, user, bets.length]);
+  */
 
   const handleLogin = async () => {
     try {
@@ -324,6 +326,7 @@ export default function App() {
     }
   };
 
+  /*
   // Check for daily generation (00:01 logic)
   useEffect(() => {
     const checkDailyGeneration = async () => {
@@ -347,6 +350,7 @@ export default function App() {
       checkDailyGeneration();
     }
   }, [authReady, user?.role]);
+  */
 
   if (!authReady) {
     return (

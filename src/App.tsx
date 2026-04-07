@@ -43,7 +43,8 @@ import {
   Timestamp,
   addDoc,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  updateDoc
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './lib/firebase';
 import { Bet, PerformanceData, UserProfile } from './types';
@@ -58,6 +59,7 @@ import { generateDailyBets, checkBetResults } from './services/gemini';
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [pendingUsers, setPendingUsers] = useState<UserProfile[]>([]);
   const [authReady, setAuthReady] = useState(false);
   const [bets, setBets] = useState<Bet[]>([]);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
@@ -92,7 +94,13 @@ export default function App() {
           
           if (userDoc.exists()) {
             const userData = userDoc.data() as UserProfile;
-            // Update profile if permissions changed
+            const userEmail = firebaseUser.email?.toLowerCase() || '';
+            const isOwner = userEmail === 'minecraftthedark@gmail.com';
+            const isAdmin = isOwner || accessData.adminEmails.includes(userEmail);
+            
+            // Respect the isVip flag from the document if it's already true
+            const isVip = isAdmin || accessData.vipEmails.includes(userEmail) || userData.isVip;
+            
             if (userData.role !== (isAdmin ? 'admin' : 'user') || userData.isVip !== isVip) {
               const updatedProfile = { ...userData, role: isAdmin ? 'admin' as const : 'user' as const, isVip };
               await setDoc(doc(db, 'users', firebaseUser.uid), updatedProfile);
@@ -101,12 +109,18 @@ export default function App() {
               setUser(userData);
             }
           } else {
+            const userEmail = firebaseUser.email?.toLowerCase() || '';
+            const isOwner = userEmail === 'minecraftthedark@gmail.com';
+            const isAdmin = isOwner || accessData.adminEmails.includes(userEmail);
+            const isVip = isAdmin || accessData.vipEmails.includes(userEmail);
+
             // Create initial profile
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               email: userEmail,
               isVip,
-              role: isAdmin ? 'admin' : 'user'
+              role: isAdmin ? 'admin' : 'user',
+              subscriptionStatus: 'none'
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
             setUser(newProfile);
@@ -121,6 +135,19 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Listen for pending users (Admin only)
+  useEffect(() => {
+    if (!user || user.role !== 'admin' || !authReady) return;
+    
+    const pendingQuery = query(collection(db, 'users'), where('subscriptionStatus', '==', 'pending'));
+    const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
+      const users = snapshot.docs.map(doc => doc.data() as UserProfile);
+      setPendingUsers(users);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
+    
+    return () => unsubscribePending();
+  }, [user?.role, authReady]);
 
   // Sync Bets and Performance from Firestore
   useEffect(() => {
@@ -199,11 +226,27 @@ export default function App() {
   const handleSubscribe = async () => {
     if (user) {
       try {
-        await setDoc(doc(db, 'users', user.uid), { ...user, isVip: true });
-        setUser({ ...user, isVip: true });
+        const updatedProfile = { ...user, subscriptionStatus: 'pending' as const };
+        await setDoc(doc(db, 'users', user.uid), updatedProfile);
+        setUser(updatedProfile);
+        showStatus("Solicitação enviada! Aguardando aprovação do pagamento.", "info");
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
       }
+    }
+  };
+
+  const handleApproveVip = async (uid: string) => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, {
+        isVip: true,
+        subscriptionStatus: 'active'
+      });
+      showStatus("Usuário aprovado com sucesso!", "success");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
     }
   };
 
@@ -679,7 +722,11 @@ export default function App() {
             </div>
 
             <TabsContent value="vip" className="mt-0">
-              <VipSection onSubscribe={handleSubscribe} isVip={user.isVip} />
+              <VipSection 
+                onSubscribe={handleSubscribe} 
+                isVip={user.isVip} 
+                subscriptionStatus={user.subscriptionStatus}
+              />
             </TabsContent>
 
             <TabsContent value="my-stats" className="mt-0">
@@ -694,6 +741,8 @@ export default function App() {
                   onCheckResults={handleCheckResults}
                   onClearDatabase={handleClearDatabase}
                   onClearBets={handleClearCurrentBets}
+                  onApproveVip={handleApproveVip}
+                  pendingUsers={pendingUsers}
                   onShowStatus={showStatus}
                   isGenerating={isGenerating} 
                 />

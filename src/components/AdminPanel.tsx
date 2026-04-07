@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Zap, Save, RefreshCw, ShieldCheck, Image as ImageIcon, Loader2, Key } from 'lucide-react';
+import { Plus, Trash2, Zap, Save, RefreshCw, ShieldCheck, Image as ImageIcon, Loader2, Key, Crown } from 'lucide-react';
 import { Bet, Match } from '../types';
 import { motion } from 'framer-motion';
 import { interpretBetScreenshot } from '../services/gemini';
@@ -25,11 +25,23 @@ interface AdminPanelProps {
   onCheckResults: () => void;
   onClearDatabase: () => void;
   onClearBets: () => void;
+  onApproveVip: (uid: string) => void;
+  pendingUsers: any[];
   onShowStatus: (message: string, type: 'success' | 'error' | 'info') => void;
   isGenerating: boolean;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerate, onCheckResults, onClearDatabase, onClearBets, onShowStatus, isGenerating }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ 
+  onAddBet, 
+  onForceGenerate, 
+  onCheckResults, 
+  onClearDatabase, 
+  onClearBets, 
+  onApproveVip,
+  pendingUsers,
+  onShowStatus, 
+  isGenerating 
+}) => {
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -222,6 +234,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onAddBet, onForceGenerat
           </Button>
         </div>
       </div>
+
+      {pendingUsers.length > 0 && (
+        <Card className="border-yellow-500/20 bg-yellow-500/5">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="w-5 h-5 text-yellow-500" />
+              Solicitações VIP Pendentes ({pendingUsers.length})
+            </CardTitle>
+            <CardDescription>Usuários que informaram ter realizado o pagamento via PIX.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pendingUsers.map((u) => (
+              <div key={u.uid} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl">
+                <div>
+                  <p className="font-bold">{u.email}</p>
+                  <p className="text-xs text-muted-foreground">ID: {u.uid}</p>
+                </div>
+                <Button 
+                  onClick={() => onApproveVip(u.uid)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold gap-2"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Aprovar VIP
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-border/50 bg-card/50 backdrop-blur-sm" onPaste={handlePaste}>
         <CardHeader className="flex flex-row items-center justify-between">

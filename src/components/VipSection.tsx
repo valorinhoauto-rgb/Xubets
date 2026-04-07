@@ -9,11 +9,12 @@ import { generatePixPayload } from '../lib/pix';
 interface VipSectionProps {
   onSubscribe: () => void;
   isVip: boolean;
+  subscriptionStatus?: 'none' | 'pending' | 'active';
 }
 
 const VIP_PRICE = 29.90;
 
-export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip }) => {
+export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip, subscriptionStatus = 'none' }) => {
   const [showPixModal, setShowPixModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -106,11 +107,15 @@ export const VipSection: React.FC<VipSectionProps> = ({ onSubscribe, isVip }) =>
             </ul>
             <Button 
               size="lg" 
-              className="w-full max-w-sm bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-lg h-14"
+              className={`w-full max-w-sm font-bold text-lg h-14 ${
+                subscriptionStatus === 'pending' 
+                  ? 'bg-accent text-muted-foreground' 
+                  : 'bg-yellow-500 hover:bg-yellow-600 text-black'
+              }`}
               onClick={() => setShowPixModal(true)}
-              disabled={isVip}
+              disabled={isVip || subscriptionStatus === 'pending'}
             >
-              {isVip ? 'VOCÊ JÁ É VIP!' : 'ASSINAR AGORA'}
+              {isVip ? 'VOCÊ JÁ É VIP!' : subscriptionStatus === 'pending' ? 'AGUARDANDO APROVAÇÃO' : 'ASSINAR AGORA'}
             </Button>
           </CardContent>
         </Card>

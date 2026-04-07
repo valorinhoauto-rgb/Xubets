@@ -33,4 +33,5 @@ export interface UserProfile {
   isVip: boolean;
   role: 'admin' | 'user';
   subscriptionEnd?: string;
+  subscriptionStatus?: 'none' | 'pending' | 'active';
 }

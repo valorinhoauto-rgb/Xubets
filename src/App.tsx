@@ -29,6 +29,8 @@ import {
 import { 
   doc, 
   getDoc, 
+  getDocs,
+  deleteDoc,
   setDoc, 
   onSnapshot, 
   collection, 
@@ -57,6 +59,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'single' | 'multi' | 'bingo' | 'vip' | 'admin'>('single');
 
+  const [userBets, setUserBets] = useState<string[]>([]);
   const seedingRef = useRef(false);
   const autoGenRef = useRef(false);
 
@@ -123,6 +126,16 @@ export default function App() {
       unsubscribeBets();
       unsubscribePerf();
     };
+  }, [user, authReady]);
+
+  // Sync Taken Bets
+  useEffect(() => {
+    if (!user || !authReady) return;
+    
+    const unsubUserBets = onSnapshot(collection(db, 'users', user.uid, 'taken_bets'), (snapshot) => {
+      setUserBets(snapshot.docs.map(doc => doc.id));
+    });
+    return () => unsubUserBets();
   }, [user, authReady]);
 
   // Seed initial realistic data if empty (Admin only or first run)
@@ -269,11 +282,32 @@ export default function App() {
     );
   }
 
+  const handleTakeBet = async (betId: string) => {
+    if (!user) return;
+    try {
+      const betRef = doc(db, 'users', user.uid, 'taken_bets', betId);
+      if (userBets.includes(betId)) {
+        await deleteDoc(betRef);
+      } else {
+        await setDoc(betRef, { takenAt: serverTimestamp() });
+      }
+    } catch (error) {
+      console.error("Error taking bet:", error);
+    }
+  };
+
   // ROI calculation
   const calculateROI = () => {
-    if (performanceData.length === 0) return "0.0%";
-    const totalInvested = performanceData.length; // Assuming 1u per bet for ROI calculation
-    const totalProfit = performanceData.reduce((acc, curr) => acc + curr.units, 0);
+    // Only count bets that were taken AND have a result
+    const takenAndResolved = bets.filter(b => userBets.includes(b.id) && b.result && b.result !== 'pending');
+    const historicalTaken = performanceData.filter(p => p.units !== 0); // Assuming historical are already filtered
+    
+    if (takenAndResolved.length === 0 && historicalTaken.length === 0) return "0.0%";
+    
+    const totalProfit = takenAndResolved.reduce((acc, curr) => acc + (curr.result === 'win' ? curr.odds - 1 : -1), 0) + 
+                        historicalTaken.reduce((acc, curr) => acc + curr.units, 0);
+    
+    const totalInvested = takenAndResolved.length + historicalTaken.length;
     const roi = (totalProfit / totalInvested) * 100;
     return `${roi.toFixed(1)}%`;
   };
@@ -454,7 +488,12 @@ export default function App() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.1 }}
                             >
-                              <BetCard bet={bet} isVipUser={user.isVip} />
+                              <BetCard 
+                                bet={bet} 
+                                isVipUser={user.isVip} 
+                                isTaken={userBets.includes(bet.id)}
+                                onTakeBet={() => handleTakeBet(bet.id)}
+                              />
                             </motion.div>
                           ))}
                         </AnimatePresence>

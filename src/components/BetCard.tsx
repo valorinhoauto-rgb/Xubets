@@ -3,19 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Bet } from "../types";
-import { Trophy, Clock, ShieldCheck, Zap, Crown } from 'lucide-react';
+import { Trophy, Clock, ShieldCheck, Zap, Crown, CheckCircle2, PlusCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { Button } from "@/components/ui/button";
 
 interface BetCardProps {
   bet: Bet;
   isVipUser: boolean;
+  isTaken?: boolean;
+  onTakeBet?: () => void;
 }
 
-export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser }) => {
+export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser, isTaken, onTakeBet }) => {
   const isLocked = bet.isVip && !isVipUser;
 
   return (
-    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isLocked ? 'blur-sm grayscale' : ''}`}>
+    <Card className={`relative overflow-hidden transition-all hover:shadow-lg bg-card border-border ${isLocked ? 'blur-sm grayscale' : ''} ${isTaken ? 'ring-2 ring-primary border-primary/50 shadow-primary/10' : ''}`}>
       {isLocked && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
           <Crown className="w-12 h-12 text-yellow-400 mb-4 animate-pulse" />
@@ -37,11 +40,34 @@ export const BetCard: React.FC<BetCardProps> = ({ bet, isVipUser }) => {
               Odd Total: <span className="text-primary font-bold">{bet.odds.toFixed(2)}</span>
             </CardDescription>
           </div>
-          {bet.isVip && (
-            <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1">
-              <Crown className="w-3 h-3" /> VIP
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {bet.isVip && (
+              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 gap-1">
+                <Crown className="w-3 h-3" /> VIP
+              </Badge>
+            )}
+            {!isLocked && onTakeBet && (
+              <Button 
+                size="sm" 
+                variant={isTaken ? "default" : "outline"}
+                className={`h-8 gap-2 font-bold transition-all ${isTaken ? 'bg-primary hover:bg-primary/90' : 'hover:border-primary hover:text-primary'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTakeBet();
+                }}
+              >
+                {isTaken ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> PEGUEI
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4" /> PEGAR
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 

@@ -1,7 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, query, where, orderBy, getDocFromServer } from 'firebase/firestore';
-import firebaseConfigFromJson from '../../firebase-applet-config.json';
+// Import local config optionally (it might be missing on Netlify due to .gitignore)
+const localConfigs = import.meta.glob('../../firebase-applet-config.json', { eager: true });
+const firebaseConfigFromJson = (Object.values(localConfigs)[0] as any)?.default || {};
 
 // Use environment variables if available, otherwise fallback to JSON config
 const firebaseConfig = {

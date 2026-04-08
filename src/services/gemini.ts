@@ -31,37 +31,73 @@ const getAi = (keyType: KeyType = 'default') => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> => {
+export const generateDailyBets = async (type: 'single' | 'multi' | 'bingo' | 'all' = 'all'): Promise<Bet[]> => {
   const ai = getAi('generate');
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-3.1-flash-lite-preview";
   
   // Get current time in Brasilia
   const now = new Date();
-  const brasiliaTime = new Intl.DateTimeFormat('pt-BR', {
+  const brFormatter = new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: 'numeric',
     hour12: false
-  }).format(now);
+  });
   
-  const currentHour = parseInt(brasiliaTime);
-  const targetDate = new Date(now);
+  const parts = brFormatter.formatToParts(now);
+  const brHour = parseInt(parts.find(p => p.type === 'hour')?.value || "0");
+  const brDay = parts.find(p => p.type === 'day')?.value;
+  const brMonth = parts.find(p => p.type === 'month')?.value;
+  const brYear = parts.find(p => p.type === 'year')?.value;
   
-  // If after 16:00 BRT, look for tomorrow's matches
-  if (currentHour >= 16) {
-    targetDate.setDate(targetDate.getDate() + 1);
+  const dateToday = `${brDay}/${brMonth}/${brYear}`;
+  
+  // Calculate tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowParts = brFormatter.formatToParts(tomorrow);
+  const tmDay = tomorrowParts.find(p => p.type === 'day')?.value;
+  const tmMonth = tomorrowParts.find(p => p.type === 'month')?.value;
+  const tmYear = tomorrowParts.find(p => p.type === 'year')?.value;
+  const dateTomorrow = `${tmDay}/${tmMonth}/${tmYear}`;
+
+  let typeInstruction = "";
+  if (type === 'single') {
+    typeInstruction = `VOCÊ DEVE GERAR EXATAMENTE ESTAS APOSTAS (Total de 2 apostas):
+    - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)
+    - 1 aposta "single" VIP (isVip: true, Odd 1.50-2.00)`;
+  } else if (type === 'multi') {
+    typeInstruction = `VOCÊ DEVE GERAR EXATAMENTE ESTAS APOSTAS (Total de 2 apostas):
+    - 1 aposta "multi" FREE (isVip: false, 2-3 jogos, Odd ~2.00)
+    - 1 aposta "multi" VIP (isVip: true, 2-3 jogos, Odd ~2.00)`;
+  } else if (type === 'bingo') {
+    typeInstruction = `VOCÊ DEVE GERAR EXATAMENTE ESTAS APOSTAS (Total de 3 apostas):
+    - 1 aposta "bingo" FREE (isVip: false, Odd 10.00+)
+    - 1 aposta "bingo" VIP (isVip: true, Odd 10.00+, mínimo 4 jogos)
+    - 1 aposta "bingo" VIP (isVip: true, Odd 50.00+, mínimo 4 jogos)`;
+  } else {
+    typeInstruction = `VOCÊ DEVE GERAR EXATAMENTE ESTA GRADE DE APOSTAS (Total de 7 apostas):
+    - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)
+    - 1 aposta "multi" FREE (isVip: false, 2-3 jogos, Odd ~2.00)
+    - 1 aposta "bingo" FREE (isVip: false, Odd 10.00+)
+    - 1 aposta "single" VIP (isVip: true, Odd 1.50-2.00)
+    - 1 aposta "multi" VIP (isVip: true, 2-3 jogos, Odd ~2.00)
+    - 1 aposta "bingo" VIP (isVip: true, Odd 10.00+, mínimo 4 jogos)
+    - 1 aposta "bingo" VIP (isVip: true, Odd 50.00+, mínimo 4 jogos)`;
   }
-  
-  const dateStr = targetDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  
+
   const prompt = `VOCÊ É UM ANALISTA PROFISSIONAL DE APOSTAS ESPORTIVAS (BETTING EXPERT).
-  DATA ALVO: ${dateStr} (Fuso Horário: Brasília/Brasil).
+  HORÁRIO ATUAL EM BRASÍLIA: ${brHour}:00 de ${dateToday}.
   
   SUA MISSÃO:
-  1. Use o Google Search para encontrar jogos REAIS de futebol que acontecem EXATAMENTE na data ${dateStr}.
-  2. VALIDE as odds em sites como Bet365, Betano ou Oddspedia. NÃO invente odds.
-  3. Se o horário atual em Brasília for após as 16:00, foque EXCLUSIVAMENTE nos jogos do dia seguinte (${dateStr}).
-  4. NÃO gere jogos que já começaram ou terminaram.
-  5. SE NÃO ENCONTRAR JOGOS REAIS COM ODDS CONFIRMADAS PARA ${dateStr}, RETORNE UM ARRAY VAZIO []. NUNCA INVENTE JOGOS OU DATAS.
+  1. Use o Google Search para encontrar jogos REAIS de futebol que acontecem entre AGORA e o final do dia ${dateTomorrow}.
+  2. PRIORIDADE: Se ainda houver jogos importantes hoje (${dateToday}) que NÃO começaram, inclua-os.
+  3. Se já for tarde (após as 21:00 em Brasília), foque mais nos jogos de amanhã (${dateTomorrow}).
+  4. VALIDE as odds em sites como Bet365, Betano ou Oddspedia. NÃO invente odds.
+  5. NÃO gere jogos que já começaram ou terminaram.
+  6. SE NÃO ENCONTRAR JOGOS REAIS COM ODDS CONFIRMADAS, RETORNE UM ARRAY VAZIO []. NUNCA INVENTE JOGOS OU DATAS.
   
   MERCADOS PERMITIDOS (EXPLORE VARIADADE):
   - Resultado Final (1X2)
@@ -71,20 +107,13 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
   - Escanteios Asiáticos (Ex: Over 9.5 Cantos, Under 10.0 Cantos)
   
   REGRAS DE INTEGRIDADE:
-  - RIGOR DE DATA: Verifique se o jogo é REALMENTE no dia ${dateStr}. Não confunda com jogos de datas próximas.
+  - RIGOR DE DATA: Verifique se o jogo é REALMENTE entre ${dateToday} e ${dateTomorrow}.
   - CADA TIME SÓ PODE APARECER EM UM ÚNICO JOGO NO DIA.
   - NÃO REPITA BILHETES. Cada aposta deve ter uma combinação ÚNICA de jogos e mercados. 
   - EVITE HALLUCINAÇÕES: Se você não tem certeza de um jogo ou da data, NÃO o inclua.
-  - SE O GOOGLE SEARCH NÃO RETORNAR RESULTADOS PARA ${dateStr}, RETORNE [].
+  - SE O GOOGLE SEARCH NÃO RETORNAR RESULTADOS, RETORNE [].
   
-  VOCÊ DEVE GERAR EXATAMENTE ESTA GRADE DE APOSTAS (Total de 7 apostas):
-  - 1 aposta "single" FREE (isVip: false, Odd 1.50-2.00)
-  - 1 aposta "multi" FREE (isVip: false, 2-3 jogos, Odd ~2.00)
-  - 1 aposta "bingo" FREE (isVip: false, Odd 10.00+)
-  - 1 aposta "single" VIP (isVip: true, Odd 1.50-2.00)
-  - 1 aposta "multi" VIP (isVip: true, 2-3 jogos, Odd ~2.00)
-  - 1 aposta "bingo" VIP (isVip: true, Odd 10.00+, mínimo 4 jogos)
-  - 1 aposta "bingo" VIP (isVip: true, Odd 50.00+, mínimo 4 jogos)
+  ${typeInstruction}
   
   REGRAS PARA BINGOS VIP:
   - Devem conter no mínimo 4 jogos da grade do dia.
@@ -141,7 +170,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
 
     try {
       return await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model,
         contents: prompt,
         config
       });
@@ -156,7 +185,11 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
     // Try with tools
     response = await generateWithConfig(true);
 
-    const bets: Bet[] = JSON.parse(response.text || "[]").map((b: any) => ({
+    let text = response.text || "[]";
+    // Clean markdown code blocks if present
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    const bets: Bet[] = JSON.parse(text).map((b: any) => ({
       ...b,
       id: Math.random().toString(36).substr(2, 9),
       date: new Date().toISOString(),
@@ -166,7 +199,7 @@ export const generateDailyBets = async (isVip: boolean = false): Promise<Bet[]> 
     return bets;
   } catch (error) {
     console.error("Error generating bets:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -194,7 +227,9 @@ export const checkBetResults = async (bets: Bet[]): Promise<{ id: string, result
         tools: [{ googleSearch: {} }]
       }
     });
-    return JSON.parse(response.text || "[]");
+    let text = response.text || "[]";
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(text);
   } catch (error: any) {
     if (error?.message?.includes('429') || error?.message?.includes('quota')) {
       console.error("Cota do Gemini atingida para verificação de resultados. Tente novamente em 1 minuto.");
@@ -244,7 +279,9 @@ export const interpretBetScreenshot = async (base64Image: string): Promise<Parti
         responseMimeType: "application/json"
       }
     });
-    return JSON.parse(response.text || "null");
+    let text = response.text || "null";
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(text);
   } catch (error) {
     console.error("Error interpreting screenshot:", error);
     return null;

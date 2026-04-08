@@ -21,7 +21,7 @@ declare global {
 
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
-  onForceGenerate: () => void;
+  onForceGenerate: (type: 'single' | 'multi' | 'bingo' | 'all') => void;
   onClearDatabase: () => void;
   onClearBets: () => void;
   onApproveVip: (uid: string) => void;
@@ -179,14 +179,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               Configurar Chave API
             </Button>
           )}
-          <Button 
-            onClick={onForceGenerate} 
-            disabled={isGenerating}
-            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 gap-2 text-xs h-9"
-          >
-            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-            {isGenerating ? 'Gerando...' : 'Forçar IA'}
-          </Button>
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <Button 
+              onClick={() => onForceGenerate('single')} 
+              disabled={isGenerating}
+              variant="outline"
+              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
+            >
+              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+              IA Individual
+            </Button>
+            <Button 
+              onClick={() => onForceGenerate('multi')} 
+              disabled={isGenerating}
+              variant="outline"
+              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
+            >
+              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+              IA Múltipla
+            </Button>
+            <Button 
+              onClick={() => onForceGenerate('bingo')} 
+              disabled={isGenerating}
+              variant="outline"
+              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
+            >
+              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+              IA Bingo
+            </Button>
+            <Button 
+              onClick={() => onForceGenerate('all')} 
+              disabled={isGenerating}
+              className="flex-1 md:flex-none bg-primary hover:bg-primary/90 gap-2 text-[10px] h-8"
+            >
+              <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+              Gerar Tudo
+            </Button>
+          </div>
           <Button 
             onClick={() => {
               if (showClearBetsConfirm) {

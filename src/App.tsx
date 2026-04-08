@@ -202,7 +202,7 @@ export default function App() {
       
       try {
         // Only generate initial bets via Gemini if empty, NO fake performance
-        const initialBets = await generateDailyBets(user.isVip);
+        const initialBets = await generateDailyBets('all');
         for (const b of initialBets) {
           await setDoc(doc(db, 'bets', b.id), { ...b, createdAt: Timestamp.now() });
         }
@@ -270,22 +270,30 @@ export default function App() {
     }
   };
 
-  const handleForceAIGenerate = async () => {
+  const handleForceAIGenerate = async (type: 'single' | 'multi' | 'bingo' | 'all' = 'all') => {
     if (!user || user.role !== 'admin' || isGenerating) return;
     setIsGenerating(true);
-    showStatus("Iniciando geração de apostas via IA...", "info");
+    showStatus(`Iniciando geração de apostas (${type}) via IA...`, "info");
     
     try {
       // Fetch all bets and filter in memory to avoid index issues and missing field issues
       const betsSnapshot = await getDocs(collection(db, 'bets'));
+      
+      // If generating a specific type, clear all non-manual bets of that type
       const deletePromises = betsSnapshot.docs
-        .filter(d => !d.data().isManual) // Clear anything that isn't explicitly manual
+        .filter(d => {
+          const data = d.data();
+          if (data.isManual) return false;
+          if (type === 'all') return true;
+          return data.type === type;
+        })
         .map(d => deleteDoc(d.ref));
+      
       await Promise.all(deletePromises);
 
-      const newBets = await generateDailyBets(true);
-      if (newBets.length === 0) {
-        showStatus("O Gemini atingiu o limite de requisições ou não encontrou jogos reais. Tente novamente em alguns minutos.", "error");
+      const newBets = await generateDailyBets(type);
+      if (!newBets || newBets.length === 0) {
+        showStatus("A IA não encontrou jogos reais para a data de hoje/amanhã. Tente novamente mais tarde.", "info");
         return;
       }
 
@@ -320,7 +328,13 @@ export default function App() {
     } catch (error: any) {
       console.error("Error forcing AI generation:", error);
       const isQuota = error?.message?.includes('429') || error?.message?.includes('quota');
-      showStatus(isQuota ? "Limite de uso do Gemini atingido. Aguarde um momento." : "Erro ao gerar apostas. Verifique o console.", "error");
+      const isKeyMissing = error?.message?.includes('não encontrada');
+      
+      let msg = "Erro ao gerar apostas. Verifique o console.";
+      if (isQuota) msg = "Limite de uso do Gemini atingido. Aguarde um momento.";
+      if (isKeyMissing) msg = "Chave API do Gemini não configurada. Verifique as configurações do site.";
+      
+      showStatus(msg, "error");
     } finally {
       setIsGenerating(false);
     }
@@ -597,18 +611,17 @@ export default function App() {
       ? b.createdAt.toDate().toISOString().split('T')[0] 
       : (b.createdAt as any)?.split('T')[0];
     
-    const isToday = betDate === today;
     const isPending = b.result === 'pending';
 
     if (activeTab === 'history') {
-      return !isToday || !isPending;
+      return !isPending;
     }
     
-    if (activeTab === 'vip') return b.isVip && isToday && isPending;
+    if (activeTab === 'vip') return b.isVip && isPending;
     if (activeTab === 'admin') return true;
     
     if (['single', 'multi', 'bingo'].includes(activeTab)) {
-      return b.type === activeTab && isToday && isPending;
+      return b.type === activeTab && isPending;
     }
     return false;
   });

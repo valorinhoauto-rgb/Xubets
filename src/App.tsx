@@ -57,7 +57,7 @@ import { AuthForm } from './components/AuthForm';
 import { AdminPanel } from './components/AdminPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { PersonalPerformance } from './components/PersonalPerformance';
-import { generateDailyBets, checkBetResults } from './services/gemini';
+import { generateDailyBets, checkBetResults, generateMockBets } from './services/gemini';
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -391,6 +391,41 @@ export default function App() {
       </div>
     );
   }
+
+  const handleForceMockGenerate = async (type: 'single' | 'multi' | 'bingo' | 'all' = 'all') => {
+    if (!user || user.role !== 'admin' || isGenerating) return;
+    setIsGenerating(true);
+    showStatus(`Gerando palpites simulados (${type})...`, "info");
+    
+    try {
+      const betsSnapshot = await getDocs(collection(db, 'bets'));
+      const deletePromises = betsSnapshot.docs
+        .filter(d => {
+          const data = d.data();
+          if (data.isManual) return false;
+          if (type === 'all') return true;
+          return data.type === type;
+        })
+        .map(d => deleteDoc(d.ref));
+      
+      await Promise.all(deletePromises);
+
+      const newBets = await generateMockBets(type);
+      for (const b of newBets) {
+        await setDoc(doc(db, 'bets', b.id), {
+          ...b,
+          isManual: false,
+          createdAt: Timestamp.now()
+        });
+      }
+      showStatus("Grade simulada gerada com sucesso!", "success");
+    } catch (error) {
+      console.error("Error generating mock bets:", error);
+      showStatus("Erro ao gerar grade simulada.", "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleCheckResults = async () => {
     if (!user || user.role !== 'admin' || isGenerating) return;
@@ -928,6 +963,7 @@ export default function App() {
                 <AdminPanel 
                   onAddBet={handleAddManualBet} 
                   onForceGenerate={handleForceAIGenerate} 
+                  onForceMockGenerate={handleForceMockGenerate}
                   onClearDatabase={handleClearDatabase}
                   onClearBets={handleClearCurrentBets}
                   onApproveVip={handleApproveVip}

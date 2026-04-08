@@ -22,6 +22,7 @@ declare global {
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
   onForceGenerate: (type: 'single' | 'multi' | 'bingo' | 'all') => void;
+  onForceMockGenerate: (type: 'single' | 'multi' | 'bingo' | 'all') => void;
   onClearDatabase: () => void;
   onClearBets: () => void;
   onApproveVip: (uid: string) => void;
@@ -33,6 +34,7 @@ interface AdminPanelProps {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
   onAddBet, 
   onForceGenerate, 
+  onForceMockGenerate,
   onClearDatabase, 
   onClearBets, 
   onApproveVip,
@@ -180,6 +182,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </Button>
           )}
           <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <Button 
+              onClick={() => onForceMockGenerate('all')} 
+              disabled={isGenerating}
+              variant="outline"
+              className="flex-1 md:flex-none border-dashed border-yellow-500/50 hover:bg-yellow-500/5 gap-2 text-[10px] h-8"
+              title="Gera palpites realistas sem usar a API (Contingência)"
+            >
+              <Zap className="w-3 h-3 text-yellow-500" />
+              IA Contingência
+            </Button>
             <Button 
               onClick={() => onForceGenerate('single')} 
               disabled={isGenerating}

@@ -1,38 +1,76 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Bet, Match } from "../types";
 
-type KeyType = 'generate' | 'interpret' | 'check' | 'default';
+type KeyType = 'generate' | 'interpret' | 'check' | 'default' | 'single' | 'multi' | 'bingo';
 
-const getAi = (keyType: KeyType = 'default') => {
-  const keys = {
-    generate: import.meta.env.VITE_XUBETS_GEN_KEY,
-    interpret: import.meta.env.VITE_XUBETS_INTERPRET_KEY,
-    check: import.meta.env.VITE_XUBETS_CHECK_KEY,
-    default: import.meta.env.VITE_XUBETS_AI_KEY || process.env.GEMINI_API_KEY
+const getAi = (keyType: KeyType = 'default', attempt: number = 0) => {
+  // Helper to get env var safely in browser
+  const getEnv = (name: string) => {
+    return import.meta.env[name] || (window as any).process?.env?.[name] || "";
   };
 
-  const apiKey = keys[keyType] || keys.default || "";
+  const platformKey = (window as any).process?.env?.GEMINI_API_KEY || "";
   
-  // Log masked key for debugging (only first 4 and last 4 chars)
-  if (apiKey) {
-    const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-    console.log(`[AI Service] Using key for ${keyType}: ${masked}`);
+  const keys: Record<string, string[]> = {
+    single: [
+      getEnv('VITE_XUBETS_GEN_SINGLE_1'),
+      getEnv('VITE_XUBETS_GEN_SINGLE_2')
+    ].filter(k => !!k),
+    multi: [
+      getEnv('VITE_XUBETS_GEN_MULTI_1'),
+      getEnv('VITE_XUBETS_GEN_MULTI_2')
+    ].filter(k => !!k),
+    bingo: [
+      getEnv('VITE_XUBETS_GEN_BINGO_1'),
+      getEnv('VITE_XUBETS_GEN_BINGO_2')
+    ].filter(k => !!k),
+    interpret: [getEnv('VITE_XUBETS_INTERPRET_KEY')].filter(k => !!k),
+    check: [getEnv('VITE_XUBETS_CHECK_KEY')].filter(k => !!k),
+    default: [
+      getEnv('VITE_XUBETS_AI_KEY'),
+      platformKey
+    ].filter(k => !!k)
+  };
+
+  // Pool all generation keys for 'generate' or 'all'
+  const generationPool = [...keys.single, ...keys.multi, ...keys.bingo];
+  
+  let availableKeys: string[] = [];
+  if (keyType === 'generate') {
+    availableKeys = generationPool.length > 0 ? generationPool : keys.default;
+  } else if (keys[keyType] && keys[keyType].length > 0) {
+    availableKeys = keys[keyType];
+  } else {
+    availableKeys = keys.default;
   }
 
-  if (!apiKey) {
-    const isNetlify = window.location.hostname.includes('netlify.app');
-    const msg = isNetlify 
-      ? `ERRO: Chave API (${keyType}) não encontrada no Netlify. Adicione VITE_XUBETS_${keyType.toUpperCase()}_KEY nas 'Environment Variables'.`
-      : `ERRO: Chave API (${keyType}) não encontrada. Adicione VITE_XUBETS_${keyType.toUpperCase()}_KEY nos Secrets do AI Studio.`;
-    console.error(msg);
-    throw new Error(msg);
+  // If still no keys, we have a problem
+  if (availableKeys.length === 0) {
+    console.error(`[AI Service] Nenhuma chave encontrada para ${keyType}. Verifique o menu Secrets.`);
+    throw new Error(`Configuração incompleta: Adicione as chaves Gemini no menu Secrets (engrenagem).`);
   }
+
+  // Pick key based on attempt (rotation)
+  const apiKey = availableKeys[attempt % availableKeys.length];
+  
+  const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+  console.log(`[AI Service] 🔑 Usando chave para ${keyType} (Tentativa ${attempt + 1}): ${masked}`);
   
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateDailyBets = async (type: 'single' | 'multi' | 'bingo' | 'all' = 'all'): Promise<Bet[]> => {
-  const ai = getAi('generate');
+export const checkAiKeys = () => {
+  const getEnv = (name: string) => import.meta.env[name] || (window as any).process?.env?.[name] || "";
+  return {
+    single: [getEnv('VITE_XUBETS_GEN_SINGLE_1'), getEnv('VITE_XUBETS_GEN_SINGLE_2')].filter(k => !!k).length,
+    multi: [getEnv('VITE_XUBETS_GEN_MULTI_1'), getEnv('VITE_XUBETS_GEN_MULTI_2')].filter(k => !!k).length,
+    bingo: [getEnv('VITE_XUBETS_GEN_BINGO_1'), getEnv('VITE_XUBETS_GEN_BINGO_2')].filter(k => !!k).length,
+    default: !!((window as any).process?.env?.GEMINI_API_KEY || getEnv('VITE_XUBETS_AI_KEY'))
+  };
+};
+
+export const generateDailyBets = async (type: 'single' | 'multi' | 'bingo' | 'all' = 'all', attempt: number = 0): Promise<Bet[]> => {
+  const ai = getAi(type === 'all' ? 'generate' : type, attempt);
   const model = "gemini-3.1-flash-lite-preview";
   
   // Get current time in Brasilia
@@ -176,9 +214,16 @@ export const generateDailyBets = async (type: 'single' | 'multi' | 'bingo' | 'al
       });
     } catch (error: any) {
       const isQuota = error?.message?.includes('429') || error?.message?.includes('quota');
+      
+      // If quota hit and we haven't tried all keys, retry with next key
+      if (isQuota && attempt < 5) {
+        console.warn(`[AI Service] Key ${attempt + 1} hit quota. Rotating to next key...`);
+        return generateDailyBets(type, attempt + 1);
+      }
+
       if (isQuota && useTools) {
-        console.warn("[AI Service] Quota hit for Search. Retrying without tools for fallback data...");
-        // Retry once without tools to at least get some data (though maybe not real-time)
+        console.warn("[AI Service] All keys hit quota for Search. Retrying without tools for fallback data...");
+        // Final attempt without tools
         return await ai.models.generateContent({
           model,
           contents: prompt + "\n\nAVISO: A busca em tempo real falhou. Use seu conhecimento interno para sugerir jogos realistas de grandes ligas que costumam acontecer nesta época.",

@@ -19,6 +19,9 @@ declare global {
   }
 }
 
+import { Badge } from "@/components/ui/badge";
+import { checkAiKeys } from '../services/gemini';
+
 interface AdminPanelProps {
   onAddBet: (bet: Bet) => void;
   onForceGenerate: (type: 'single' | 'multi' | 'bingo' | 'all') => void;
@@ -163,6 +166,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const keyStatus = checkAiKeys();
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -170,99 +175,110 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <h2 className="text-2xl md:text-3xl font-black tracking-tight">Painel Administrativo</h2>
           <p className="text-sm text-muted-foreground">Gerencie palpites e automação de IA.</p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {!hasApiKey && (
-            <Button 
-              onClick={handleOpenKeyDialog}
-              variant="destructive"
-              className="flex-1 md:flex-none gap-2 animate-pulse text-xs h-9"
-            >
-              <Key className="w-4 h-4" />
-              Configurar Chave API
-            </Button>
-          )}
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            <Button 
-              onClick={() => onForceMockGenerate('all')} 
-              disabled={isGenerating}
-              variant="outline"
-              className="flex-1 md:flex-none border-dashed border-yellow-500/50 hover:bg-yellow-500/5 gap-2 text-[10px] h-8"
-              title="Gera palpites realistas sem usar a API (Contingência)"
-            >
-              <Zap className="w-3 h-3 text-yellow-500" />
-              IA Contingência
-            </Button>
-            <Button 
-              onClick={() => onForceGenerate('single')} 
-              disabled={isGenerating}
-              variant="outline"
-              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
-            >
-              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
-              IA Individual
-            </Button>
-            <Button 
-              onClick={() => onForceGenerate('multi')} 
-              disabled={isGenerating}
-              variant="outline"
-              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
-            >
-              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
-              IA Múltipla
-            </Button>
-            <Button 
-              onClick={() => onForceGenerate('bingo')} 
-              disabled={isGenerating}
-              variant="outline"
-              className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
-            >
-              <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
-              IA Bingo
-            </Button>
-            <Button 
-              onClick={() => onForceGenerate('all')} 
-              disabled={isGenerating}
-              className="flex-1 md:flex-none bg-primary hover:bg-primary/90 gap-2 text-[10px] h-8"
-            >
-              <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
-              Gerar Tudo
-            </Button>
+        
+        <div className="flex items-center gap-2 bg-card border border-border p-2 rounded-xl">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-2">Status Chaves:</span>
+          <div className="flex gap-1.5">
+            <Badge variant={keyStatus.single > 0 ? "default" : "destructive"} className="text-[9px] px-1.5 h-5">S: {keyStatus.single}/2</Badge>
+            <Badge variant={keyStatus.multi > 0 ? "default" : "destructive"} className="text-[9px] px-1.5 h-5">M: {keyStatus.multi}/2</Badge>
+            <Badge variant={keyStatus.bingo > 0 ? "default" : "destructive"} className="text-[9px] px-1.5 h-5">B: {keyStatus.bingo}/2</Badge>
+            <Badge variant={keyStatus.default ? "default" : "destructive"} className="text-[9px] px-1.5 h-5">Reserva: {keyStatus.default ? 'OK' : 'OFF'}</Badge>
           </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 w-full">
+        {!hasApiKey && (
           <Button 
-            onClick={() => {
-              if (showClearBetsConfirm) {
-                onClearBets();
-                setShowClearBetsConfirm(false);
-              } else {
-                setShowClearBetsConfirm(true);
-                setTimeout(() => setShowClearBetsConfirm(false), 3000);
-              }
-            }} 
-            variant={showClearBetsConfirm ? "destructive" : "outline"}
-            disabled={isGenerating}
-            className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearBetsConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+            onClick={handleOpenKeyDialog}
+            variant="destructive"
+            className="flex-1 md:flex-none gap-2 animate-pulse text-xs h-9"
           >
-            <Trash2 className="w-4 h-4" />
-            {showClearBetsConfirm ? 'CONFIRMAR' : 'Limpar Apostas'}
+            <Key className="w-4 h-4" />
+            Configurar Chave API
+          </Button>
+        )}
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button 
+            onClick={() => onForceMockGenerate('all')} 
+            disabled={isGenerating}
+            variant="outline"
+            className="flex-1 md:flex-none border-dashed border-yellow-500/50 hover:bg-yellow-500/5 gap-2 text-[10px] h-8"
+            title="Gera palpites realistas sem usar a API (Contingência)"
+          >
+            <Zap className="w-3 h-3 text-yellow-500" />
+            IA Contingência
           </Button>
           <Button 
-            onClick={() => {
-              if (showClearConfirm) {
-                onClearDatabase();
-                setShowClearConfirm(false);
-              } else {
-                setShowClearConfirm(true);
-                setTimeout(() => setShowClearConfirm(false), 3000);
-              }
-            }} 
-            variant={showClearConfirm ? "destructive" : "outline"}
+            onClick={() => onForceGenerate('single')} 
             disabled={isGenerating}
-            className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+            variant="outline"
+            className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
           >
-            <RefreshCw className="w-4 h-4" />
-            {showClearConfirm ? 'CONFIRMAR' : 'Reset Total'}
+            <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+            IA Individual
+          </Button>
+          <Button 
+            onClick={() => onForceGenerate('multi')} 
+            disabled={isGenerating}
+            variant="outline"
+            className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
+          >
+            <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+            IA Múltipla
+          </Button>
+          <Button 
+            onClick={() => onForceGenerate('bingo')} 
+            disabled={isGenerating}
+            variant="outline"
+            className="flex-1 md:flex-none border-primary/40 hover:bg-primary/5 gap-2 text-[10px] h-8"
+          >
+            <Zap className={`w-3 h-3 ${isGenerating ? 'animate-pulse' : ''}`} />
+            IA Bingo
+          </Button>
+          <Button 
+            onClick={() => onForceGenerate('all')} 
+            disabled={isGenerating}
+            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 gap-2 text-[10px] h-8"
+          >
+            <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+            Gerar Tudo
           </Button>
         </div>
+        <Button 
+          onClick={() => {
+            if (showClearBetsConfirm) {
+              onClearBets();
+              setShowClearBetsConfirm(false);
+            } else {
+              setShowClearBetsConfirm(true);
+              setTimeout(() => setShowClearBetsConfirm(false), 3000);
+            }
+          }} 
+          variant={showClearBetsConfirm ? "destructive" : "outline"}
+          disabled={isGenerating}
+          className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearBetsConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+        >
+          <Trash2 className="w-4 h-4" />
+          {showClearBetsConfirm ? 'CONFIRMAR' : 'Limpar Apostas'}
+        </Button>
+        <Button 
+          onClick={() => {
+            if (showClearConfirm) {
+              onClearDatabase();
+              setShowClearConfirm(false);
+            } else {
+              setShowClearConfirm(true);
+              setTimeout(() => setShowClearConfirm(false), 3000);
+            }
+          }} 
+          variant={showClearConfirm ? "destructive" : "outline"}
+          disabled={isGenerating}
+          className={`flex-1 md:flex-none gap-2 transition-all duration-300 text-xs h-9 ${showClearConfirm ? 'scale-105 ring-2 ring-destructive ring-offset-2' : ''}`}
+        >
+          <RefreshCw className="w-4 h-4" />
+          {showClearConfirm ? 'CONFIRMAR' : 'Reset Total'}
+        </Button>
       </div>
 
       {pendingUsers.length > 0 && (
